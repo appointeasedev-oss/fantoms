@@ -30,7 +30,7 @@ function toHtml(textOrHtml?: string) {
   return `<p>${esc.replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`
 }
 
-export default function QuizzesTab() {
+export function QuizzesTab() {
   const { pantryId, bucket, supabaseUrl, supabaseAnonKey, tenantKey } = useFantoms()
   const envReady = pantryId && bucket && supabaseUrl && supabaseAnonKey && tenantKey
   const env: SupaEnv | null = envReady
@@ -538,3 +538,5 @@ export default function QuizzesTab() {
     </div>
   )
 }
+
+export default QuizzesTab

@@ -2,13 +2,18 @@
 
 import { useMemo, useState } from "react"
 import { LoaderScreen } from "@/components/loader-screen"
-import { AuthForm, type EnvPayload } from "@/components/auth-form"
+import { AuthForm } from "@/components/auth-form"
 import { SqlInstructions } from "@/components/sql-instructions"
 import { DashboardTab } from "@/components/dashboard-tab"
 import { QuizzesTab } from "@/components/quizzes-tab"
 import { UsersTab } from "@/components/users-tab"
 import { ShaderBackground } from "@/components/shader-background"
-import type { SupaEnv } from "@/lib/supabase-rest"
+
+export type EnvPayload = {
+  supabaseUrl: string
+  supabaseAnonKey: string
+  openrouterKey: string
+}
 
 type Step = "loader" | "auth" | "sql" | "main"
 type Tab = "dashboard" | "quizzes" | "users"
@@ -20,7 +25,7 @@ export default function FantomsPage() {
   const [bucket, setBucket] = useState("")
   const [env, setEnv] = useState<EnvPayload | null>(null)
 
-  const supaEnv: SupaEnv | null = useMemo(() => {
+  const supaEnv = useMemo(() => {
     if (!env || !pantryId || !bucket) return null
     return {
       supabaseUrl: env.supabaseUrl,
@@ -43,15 +48,16 @@ export default function FantomsPage() {
             </p>
             <AuthForm
               onSignupDone={({ pantryId, bucket, env }) => {
+              onSignupComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey, openrouterKey }) => {
                 setPantryId(pantryId)
                 setBucket(bucket)
-                setEnv(env)
+                setEnv({ supabaseUrl, supabaseAnonKey, openrouterKey })
                 setStep("sql")
               }}
-              onLoginDone={({ pantryId, bucket, env }) => {
+              onLoginComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey }) => {
                 setPantryId(pantryId)
                 setBucket(bucket)
-                setEnv(env)
+                setEnv({ supabaseUrl, supabaseAnonKey, openrouterKey: "" })
                 setStep("main")
               }}
             />
@@ -62,11 +68,15 @@ export default function FantomsPage() {
           <div className="space-y-6">
             <h2 className="text-2xl font-semibold">One-time setup</h2>
             <p className="text-white/80">Run the SQL in your Supabase project. Then continue.</p>
-            <SqlInstructions onContinue={() => setStep("main")} />
+            <SqlInstructions 
+              supabaseUrl={env?.supabaseUrl || ""}
+              onContinue={() => setStep("main")}
+              onBack={() => setStep("auth")}
+            />
           </div>
         )}
 
-        {step === "main" && supaEnv && (
+        {step === "main" && env && (
           <div className="space-y-6">
             <div className="flex gap-3">
               <button
@@ -89,13 +99,13 @@ export default function FantomsPage() {
               </button>
             </div>
 
-            {tab === "dashboard" && <DashboardTab env={supaEnv} />}
-            {tab === "quizzes" && <QuizzesTab env={supaEnv} pantryId={pantryId} bucket={bucket} />}
-            {tab === "users" && <UsersTab env={supaEnv} />}
+            {tab === "dashboard" && <DashboardTab />}
+            {tab === "quizzes" && <QuizzesTab />}
+            {tab === "users" && <UsersTab />}
           </div>
         )}
 
-        {!supaEnv && step === "main" && <p className="text-red-300">Missing environment. Please log in again.</p>}
+        {!env && step === "main" && <p className="text-red-300">Missing environment. Please log in again.</p>}
       </div>
     </main>
   )

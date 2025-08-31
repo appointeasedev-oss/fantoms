@@ -3,7 +3,7 @@ import useSWR from "swr"
 import { useFantoms } from "./fantoms-context"
 import { sbFetch, type SupaEnv } from "@/lib/supabase-rest"
 
-export default function DashboardTab() {
+export function DashboardTab() {
   const { pantryId, bucket, supabaseUrl, supabaseAnonKey, tenantKey, error: pantryError, loading } = useFantoms()
   const env: SupaEnv | null =
     supabaseUrl && supabaseAnonKey && tenantKey ? { supabaseUrl, supabaseAnonKey, tenantKey } : null
@@ -47,3 +47,5 @@ function Stat({ label, value }: { label: string; value: number | string }) {
     </div>
   )
 }
+
+export default DashboardTab

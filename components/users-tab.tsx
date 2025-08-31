@@ -15,7 +15,7 @@ function generateUserId(name: string) {
   return `${base || "user"}_${suffix}`
 }
 
-export default function UsersTab() {
+export function UsersTab() {
   const { supabaseUrl, supabaseAnonKey, tenantKey } = useFantoms()
   const env: SupaEnv | null =
     supabaseUrl && supabaseAnonKey && tenantKey ? { supabaseUrl, supabaseAnonKey, tenantKey } : null
@@ -170,3 +170,5 @@ export default function UsersTab() {
     </div>
   )
 }
+
+export default UsersTab

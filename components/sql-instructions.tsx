@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from "react"
 
-export default function SqlInstructions({
+export function SqlInstructions({
   supabaseUrl,
   onContinue,
   onBack,
@@ -156,3 +156,5 @@ end$$;`,
     </section>
   )
 }
+
+export default SqlInstructions

@@ -42,7 +42,7 @@ async function fetchFromPantry(pantryId: string, bucket: string) {
   return (await res.json()) as { ok: boolean; data?: any; error?: string; status?: number }
 }
 
-export default function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
+export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
   const [mode, setMode] = useState<"login" | "signup">("signup")
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -222,3 +222,4 @@ export default function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
 }
 
 export type { Props as AuthFormProps }
+export default AuthForm

@@ -3,7 +3,7 @@
 import { PulsingBorder } from "@paper-design/shaders-react"
 import { motion } from "framer-motion"
 
-export default function LoaderScreen() {
+export function LoaderScreen() {
   return (
     <div className="w-full h-full flex items-center justify-center">
       <div className="relative w-40 h-40 flex items-center justify-center">
@@ -48,3 +48,5 @@ export default function LoaderScreen() {
     </div>
   )
 }
+
+export default LoaderScreen
