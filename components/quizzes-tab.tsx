@@ -272,6 +272,8 @@ export function QuizzesTab() {
   }
 
   function QuizBuilder() {
+    const [focusedInput, setFocusedInput] = React.useState<string | null>(null)
+
     return (
       <div className="space-y-3">
         <div className="grid gap-2" autoCorrect="off" autoCapitalize="off">
@@ -279,9 +281,14 @@ export function QuizzesTab() {
           <input
             className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
             value={draft.title}
-            onChange={(e) => setDraft((d) => ({ ...d, title: e.target.value }))}
+            onChange={(e) => {
+              const value = e.target.value
+              setDraft((d) => ({ ...d, title: value }))
+            }}
             placeholder="Enter title"
             autoComplete="off"
+            onFocus={() => setFocusedInput('title')}
+            onBlur={() => setFocusedInput(null)}
           />
         </div>
         <div className="grid gap-2" autoCorrect="off" autoCapitalize="off">
@@ -289,9 +296,14 @@ export function QuizzesTab() {
           <textarea
             className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
             value={draft.description}
-            onChange={(e) => setDraft((d) => ({ ...d, description: e.target.value }))}
+            onChange={(e) => {
+              const value = e.target.value
+              setDraft((d) => ({ ...d, description: value }))
+            }}
             placeholder="Describe this quiz"
             autoComplete="off"
+            onFocus={() => setFocusedInput('description')}
+            onBlur={() => setFocusedInput(null)}
           />
         </div>
 
@@ -302,7 +314,9 @@ export function QuizzesTab() {
                 <div className="font-semibold">Question {idx + 1}</div>
                 <button
                   className="text-xs opacity-80 hover:opacity-100"
-                  onClick={() => setDraft((d) => ({ ...d, questions: d.questions.filter((x) => x.id !== q.id) }))}
+                  onClick={() => {
+                    setDraft((d) => ({ ...d, questions: d.questions.filter((x) => x.id !== q.id) }))
+                  }}
                 >
                   Remove
                 </button>
@@ -312,14 +326,17 @@ export function QuizzesTab() {
                 <textarea
                   className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
                   value={q.prompt}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value
                     setDraft((d) => ({
                       ...d,
-                      questions: d.questions.map((x) => (x.id === q.id ? { ...x, prompt: e.target.value } : x)),
+                      questions: d.questions.map((x) => (x.id === q.id ? { ...x, prompt: value } : x)),
                     }))
-                  }
+                  }}
                   placeholder="Enter the question"
                   autoComplete="off"
+                  onFocus={() => setFocusedInput(`prompt-${q.id}`)}
+                  onBlur={() => setFocusedInput(null)}
                 />
               </div>
               <div className="grid gap-2 mt-2">
@@ -327,13 +344,16 @@ export function QuizzesTab() {
                 <textarea
                   className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
                   value={q.solution_text}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value
                     setDraft((d) => ({
                       ...d,
-                      questions: d.questions.map((x) => (x.id === q.id ? { ...x, solution_text: e.target.value } : x)),
+                      questions: d.questions.map((x) => (x.id === q.id ? { ...x, solution_text: value } : x)),
                     }))
-                  }
+                  }}
                   placeholder="Explain the answer... (or click Generate)"
+                  onFocus={() => setFocusedInput(`solution-${q.id}`)}
+                  onBlur={() => setFocusedInput(null)}
                 />
                 <button
                   className="self-start px-2 py-1 rounded bg-white text-black text-xs"
@@ -368,15 +388,18 @@ export function QuizzesTab() {
                 <input
                   className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
                   value={q.solution_video_url}
-                  onChange={(e) =>
+                  onChange={(e) => {
+                    const value = e.target.value
                     setDraft((d) => ({
                       ...d,
                       questions: d.questions.map((x) =>
-                        x.id === q.id ? { ...x, solution_video_url: e.target.value } : x,
+                        x.id === q.id ? { ...x, solution_video_url: value } : x,
                       ),
                     }))
-                  }
+                  }}
                   placeholder="https://..."
+                  onFocus={() => setFocusedInput(`video-${q.id}`)}
+                  onBlur={() => setFocusedInput(null)}
                 />
               </div>
               <div className="mt-3">
@@ -387,7 +410,8 @@ export function QuizzesTab() {
                       <input
                         className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white flex-1"
                         value={o.option_text}
-                        onChange={(e) =>
+                        onChange={(e) => {
+                          const value = e.target.value
                           setDraft((d) => ({
                             ...d,
                             questions: d.questions.map((x) =>
@@ -395,16 +419,18 @@ export function QuizzesTab() {
                                 ? {
                                     ...x,
                                     options: x.options.map((y) =>
-                                      y.id === o.id ? { ...y, option_text: e.target.value } : y,
+                                      y.id === o.id ? { ...y, option_text: value } : y,
                                     ),
                                   }
                                 : x,
                             ),
                           }))
-                        }
+                        }}
                         placeholder="Option text"
                         autoComplete="off"
                         inputMode="text"
+                        onFocus={() => setFocusedInput(`option-${o.id}`)}
+                        onBlur={() => setFocusedInput(null)}
                       />
                       <label className="text-sm flex items-center gap-1">
                         <input
@@ -449,21 +475,17 @@ export function QuizzesTab() {
                     onClick={() =>
                       setDraft((d) => ({
                         ...d,
-                        questions: [
-                          ...d.questions,
-                          {
-                            id: crypto.randomUUID(),
-                            prompt: "",
-                            solution_text: "",
-                            solution_video_url: "",
-                            options: [
-                              { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                              { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                              { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                              { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                            ],
-                          },
-                        ],
+                        questions: d.questions.map((x) =>
+                          x.id === q.id
+                            ? {
+                                ...x,
+                                options: [
+                                  ...x.options,
+                                  { id: crypto.randomUUID(), option_text: "", is_correct: false },
+                                ],
+                              }
+                            : x,
+                        ),
                       }))
                     }
                   >

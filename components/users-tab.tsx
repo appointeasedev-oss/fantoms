@@ -138,14 +138,19 @@ export function UsersTab() {
               className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
               value={name}
               onChange={(e) => setName(e.target.value)}
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
             />
           </div>
           <div className="grid gap-1">
             <label className="text-sm opacity-90">Password</label>
             <input
+              type="password"
               className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
+              autoComplete="off"
             />
           </div>
           <div className="flex items-end">

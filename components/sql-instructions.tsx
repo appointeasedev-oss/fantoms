@@ -14,44 +14,54 @@ export function SqlInstructions({
   const [copied, setCopied] = useState(false)
 
   const sql = useMemo(
-    () => `-- Fantoms schema (run once). Includes tenant_key for multi-tenant separation.
+    () => `-- Fantoms Quiz Platform Schema
+-- Run this SQL in your Supabase SQL Editor (one time setup)
+-- This creates all necessary tables with proper relationships and security
+
 create extension if not exists "uuid-ossp";
 
+-- Main quiz table
 create table if not exists public.quizzes (
   id uuid primary key default uuid_generate_v4(),
   tenant_key text not null,
   title text not null,
   description text,
-  status text default 'active', -- 'active' | 'inactive'
+  status text default 'active' check (status in ('active', 'inactive')),
   created_at timestamptz default now()
 );
 
+-- Questions belong to quizzes
 create table if not exists public.questions (
   id uuid primary key default uuid_generate_v4(),
   tenant_key text not null,
   quiz_id uuid references public.quizzes(id) on delete cascade,
   prompt text not null,
   solution_text text,
-  solution_video_url text
+  solution_video_url text,
+  created_at timestamptz default now()
 );
 
+-- Multiple choice options for each question
 create table if not exists public.options (
   id uuid primary key default uuid_generate_v4(),
   tenant_key text not null,
   question_id uuid references public.questions(id) on delete cascade,
   option_text text not null,
-  is_correct boolean not null default false
+  is_correct boolean not null default false,
+  created_at timestamptz default now()
 );
 
+-- Users who can take quizzes
 create table if not exists public.quiz_users (
   id uuid primary key default uuid_generate_v4(),
   tenant_key text not null,
-  user_id text unique not null, -- generated like name_1234
+  user_id text not null,
   name text,
   password text,
   created_at timestamptz default now()
 );
 
+-- Quiz attempts by users
 create table if not exists public.quiz_attempts (
   id uuid primary key default uuid_generate_v4(),
   tenant_key text not null,
@@ -62,29 +72,42 @@ create table if not exists public.quiz_attempts (
   created_at timestamptz default now()
 );
 
+-- Individual answers within an attempt
 create table if not exists public.quiz_answers (
   id uuid primary key default uuid_generate_v4(),
   tenant_key text not null,
   attempt_id uuid references public.quiz_attempts(id) on delete cascade,
   question_id uuid references public.questions(id) on delete cascade,
   selected_option_id uuid references public.options(id) on delete set null,
-  is_correct boolean not null
+  is_correct boolean not null,
+  created_at timestamptz default now()
 );
 
--- Indexes
+-- Performance indexes
 create index if not exists idx_quizzes_tenant on public.quizzes(tenant_key);
+create index if not exists idx_quizzes_status on public.quizzes(status);
 create index if not exists idx_questions_quiz on public.questions(quiz_id);
+create index if not exists idx_questions_tenant on public.questions(tenant_key);
 create index if not exists idx_options_question on public.options(question_id);
+create index if not exists idx_options_tenant on public.options(tenant_key);
 create index if not exists idx_users_tenant on public.quiz_users(tenant_key);
+create index if not exists idx_users_user_id on public.quiz_users(user_id);
 create index if not exists idx_attempts_quiz on public.quiz_attempts(quiz_id);
+create index if not exists idx_attempts_user on public.quiz_attempts(quiz_user_id);
+create index if not exists idx_attempts_tenant on public.quiz_attempts(tenant_key);
 create index if not exists idx_answers_attempt on public.quiz_answers(attempt_id);
+create index if not exists idx_answers_tenant on public.quiz_answers(tenant_key);
 
--- Enforce at most one correct option per question
+-- Business rule: exactly one correct option per question
 create unique index if not exists uniq_correct_option_per_question
   on public.options(question_id)
   where is_correct = true;
 
--- RLS (permissive for demo)
+-- Unique constraint for user_id within tenant
+create unique index if not exists uniq_user_id_per_tenant
+  on public.quiz_users(tenant_key, user_id);
+
+-- Enable Row Level Security on all tables
 alter table public.quizzes enable row level security;
 alter table public.questions enable row level security;
 alter table public.options enable row level security;
@@ -92,6 +115,7 @@ alter table public.quiz_users enable row level security;
 alter table public.quiz_attempts enable row level security;
 alter table public.quiz_answers enable row level security;
 
+-- Create permissive policies for demo (you can tighten these later)
 do $$
 begin
   if not exists (select 1 from pg_policies where tablename = 'quizzes' and policyname = 'quizzes_all') then
@@ -112,7 +136,10 @@ begin
   if not exists (select 1 from pg_policies where tablename = 'quiz_answers' and policyname = 'quiz_answers_all') then
     create policy quiz_answers_all on public.quiz_answers for all using (true) with check (true);
   end if;
-end$$;`,
+end$$;
+
+-- Verify setup with a test query
+select 'Fantoms schema setup complete!' as status;`,
     [],
   )
 

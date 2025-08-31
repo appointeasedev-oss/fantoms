@@ -21,8 +21,8 @@ const instrumentSerif = Instrument_Serif({
 })
 
 export const metadata: Metadata = {
-  title: "v0 App",
-  description: "Created with v0",
+  title: "Fantoms",
+  description: "Quiz management platform",
   generator: "v0.app",
 }
 
