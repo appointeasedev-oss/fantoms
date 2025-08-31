@@ -48,6 +48,11 @@ export default function FantomsPage() {
             </p>
             <AuthForm
               onSignupDone={({ pantryId, bucket, env }) => {
+                setPantryId(pantryId)
+                setBucket(bucket)
+                setEnv(env)
+                setStep("sql")
+              }}
               onSignupComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey, openrouterKey }) => {
                 setPantryId(pantryId)
                 setBucket(bucket)
