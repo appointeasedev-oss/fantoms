@@ -59,13 +59,20 @@ export function QuizzesTab() {
     isLoading,
     error,
   } = useSWR(
-    env && !creating ? ["quizzes", env.tenantKey] : null,
+    env ? ["quizzes", env.tenantKey] : null,
     async () => {
       const { data, error } = await sbFetch<any[]>(env!, `quizzes${qs({ select: "*", order: "created_at.desc" })}`)
       if (error) throw new Error(error)
       return data || []
     },
-    { revalidateOnFocus: false, revalidateIfStale: false, revalidateOnReconnect: false, shouldRetryOnError: false },
+    { 
+      revalidateOnFocus: false, 
+      revalidateIfStale: false, 
+      revalidateOnReconnect: false, 
+      shouldRetryOnError: true,
+      errorRetryCount: 3,
+      refreshInterval: 0
+    },
   )
 
   function resetDraft() {
@@ -250,16 +257,30 @@ export function QuizzesTab() {
       resetDraft()
       setCreating(false)
       setEditingId(null)
-      mutate()
+      await mutate()
     } catch (e: any) {
       alert(`Error saving quiz: ${e.message}`)
     }
   }
 
   function QuizList() {
+    console.log('QuizList render:', { isLoading, error, quizzes, quizzesLength: quizzes?.length })
+    
     if (isLoading) return <div className="opacity-80">Loading quizzes...</div>
-    if (error) return <div className="opacity-80">Failed to load quizzes</div>
-    if (!quizzes?.length) return <div className="opacity-80">No quizzes yet. Create your first quiz.</div>
+    if (error) return <div className="opacity-80">Failed to load quizzes: {String(error)}</div>
+    if (!quizzes?.length) {
+      return (
+        <div className="text-center py-8">
+          <div className="opacity-80 mb-4">No quizzes yet. Create your first quiz.</div>
+          <button 
+            className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" 
+            onClick={() => setCreating(true)}
+          >
+            Create First Quiz
+          </button>
+        </div>
+      )
+    }
     return (
       <div className="space-y-3">
         {quizzes.map((q: any) => (
@@ -590,6 +611,8 @@ export function QuizzesTab() {
   if (!env) {
     return <div className="opacity-80">Connect Pantry and Supabase first.</div>
   }
+
+  console.log('QuizzesTab render:', { env, creating, quizzes, isLoading, error })
 
   return (
     <div className="p-4 text-white space-y-4">
