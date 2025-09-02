@@ -16,16 +16,11 @@ type QuestionDraft = {
 }
 type QuizDraft = { title: string; description?: string; questions: QuestionDraft[] }
 
-function randomId(n = 6) {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
-  return Array.from({ length: n }, () => chars[Math.floor(Math.random() * chars.length)]).join("")
-}
-
 function toHtml(textOrHtml?: string) {
   const s = (textOrHtml || "").trim()
   if (!s) return ""
   // If looks like HTML, keep; otherwise wrap plain text into <p> with <br/>
-  if (/[<>]/.test(s)) return s
+  if (/<[^>]+>/.test(s)) return s
   const esc = s.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;")
   return `<p>${esc.replace(/\n{2,}/g, "</p><p>").replace(/\n/g, "<br/>")}</p>`
 }
@@ -94,81 +89,170 @@ export function QuizzesTab() {
     })
   }
 
+  async function loadQuizForEdit(quizId: string) {
+    if (!env) return
+    
+    try {
+      // Fetch quiz details
+      const quizRes = await sbFetch<any[]>(env, `quizzes${qs({ select: "*" })}&id=eq.${quizId}`)
+      if (quizRes.error) throw new Error(quizRes.error)
+      const quiz = quizRes.data?.[0]
+      if (!quiz) throw new Error("Quiz not found")
+
+      // Fetch questions for this quiz
+      const questionsRes = await sbFetch<any[]>(env, `questions${qs({ select: "*", order: "created_at.asc" })}&quiz_id=eq.${quizId}`)
+      if (questionsRes.error) throw new Error(questionsRes.error)
+      const questions = questionsRes.data || []
+
+      // Fetch options for all questions
+      const questionIds = questions.map(q => q.id)
+      if (questionIds.length === 0) {
+        setDraft({
+          title: quiz.title,
+          description: quiz.description || "",
+          questions: [{
+            id: crypto.randomUUID(),
+            prompt: "",
+            solution_text: "",
+            solution_video_url: "",
+            options: [
+              { id: crypto.randomUUID(), option_text: "", is_correct: false },
+              { id: crypto.randomUUID(), option_text: "", is_correct: false },
+              { id: crypto.randomUUID(), option_text: "", is_correct: false },
+              { id: crypto.randomUUID(), option_text: "", is_correct: false },
+            ],
+          }]
+        })
+        return
+      }
+
+      const inList = questionIds.join(",")
+      const optionsRes = await sbFetch<any[]>(env, `options${qs({ select: "*", order: "created_at.asc" })}&question_id=in.(${inList})`)
+      if (optionsRes.error) throw new Error(optionsRes.error)
+      const options = optionsRes.data || []
+
+      // Build the draft structure
+      const questionsWithOptions = questions.map(q => ({
+        id: q.id,
+        prompt: q.prompt,
+        solution_text: q.solution_text || "",
+        solution_video_url: q.solution_video_url || "",
+        options: options.filter(o => o.question_id === q.id).map(o => ({
+          id: o.id,
+          option_text: o.option_text,
+          is_correct: o.is_correct
+        }))
+      }))
+
+      setDraft({
+        title: quiz.title,
+        description: quiz.description || "",
+        questions: questionsWithOptions
+      })
+    } catch (e: any) {
+      alert(`Failed to load quiz: ${e.message}`)
+    }
+  }
+
   async function saveQuiz() {
     if (!env) return
     if (!draft.title.trim()) return alert("Please enter a quiz title")
 
-    // Normalize questions: keep only filled questions with exactly one correct and non-empty option text
-    const normalizedQuestions = draft.questions
+    // Validate questions: keep only filled questions with exactly one correct and non-empty option text
+    const validQuestions = draft.questions
       .map((q) => ({
         ...q,
         prompt: (q.prompt || "").trim(),
-        solution_text: toHtml(q.solution_text),
+        solution_text: (q.solution_text || "").trim(),
         solution_video_url: (q.solution_video_url || "").trim(),
         options: q.options.filter((o) => (o.option_text || "").trim()),
       }))
-      .filter((q) => q.prompt && q.options.length)
+      .filter((q) => q.prompt && q.options.length >= 2)
 
-    for (const q of normalizedQuestions) {
+    if (validQuestions.length === 0) {
+      return alert("Please add at least one question with at least 2 options.")
+    }
+
+    for (const q of validQuestions) {
       const correct = q.options.filter((o) => o.is_correct)
       if (correct.length !== 1) {
-        return alert("Each question must have exactly one marked correct option.")
+        return alert(`Question "${q.prompt}" must have exactly one correct option marked.`)
       }
     }
 
-    if (!editingId) {
-      const { data, error } = await sbFetch<any[]>(env, "quizzes", {
-        method: "POST",
-        body: [
-          { tenant_key: env.tenantKey, title: draft.title, description: draft.description || "", status: "active" },
-        ],
-      })
-      if (error) return alert(error)
-      const quiz = data?.[0]
-      if (!quiz) return
-
-      for (const q of normalizedQuestions) {
-        const qRes = await sbFetch<any[]>(env, "questions", {
+    try {
+      if (!editingId) {
+        // Create new quiz
+        const { data: quizData, error: quizError } = await sbFetch<any[]>(env, "quizzes", {
           method: "POST",
           body: [
-            {
-              tenant_key: env.tenantKey,
-              quiz_id: quiz.id,
-              prompt: q.prompt,
-              solution_text: q.solution_text,
-              solution_video_url: q.solution_video_url,
+            { 
+              tenant_key: env.tenantKey, 
+              title: draft.title.trim(), 
+              description: draft.description?.trim() || "", 
+              status: "active" 
             },
           ],
         })
-        if (qRes.error) return alert(qRes.error)
-        const qRow = qRes.data?.[0]
-        if (!qRow) continue
+        if (quizError) throw new Error(quizError)
+        const quiz = quizData?.[0]
+        if (!quiz) throw new Error("Failed to create quiz")
 
-        const opts = q.options.map((o) => ({
-          tenant_key: env.tenantKey,
-          question_id: qRow.id,
-          option_text: o.option_text,
-          is_correct: !!o.is_correct,
-        }))
-        if (opts.length) {
-          const oRes = await sbFetch<any[]>(env, "options", { method: "POST", body: opts })
-          if (oRes.error) return alert(oRes.error)
+        // Create questions and options
+        for (const q of validQuestions) {
+          const { data: questionData, error: questionError } = await sbFetch<any[]>(env, "questions", {
+            method: "POST",
+            body: [
+              {
+                tenant_key: env.tenantKey,
+                quiz_id: quiz.id,
+                prompt: q.prompt,
+                solution_text: toHtml(q.solution_text),
+                solution_video_url: q.solution_video_url,
+              },
+            ],
+          })
+          if (questionError) throw new Error(questionError)
+          const question = questionData?.[0]
+          if (!question) continue
+
+          const optionsToInsert = q.options.map((o) => ({
+            tenant_key: env.tenantKey,
+            question_id: question.id,
+            option_text: o.option_text.trim(),
+            is_correct: o.is_correct,
+          }))
+
+          if (optionsToInsert.length > 0) {
+            const { error: optionsError } = await sbFetch<any[]>(env, "options", { 
+              method: "POST", 
+              body: optionsToInsert 
+            })
+            if (optionsError) throw new Error(optionsError)
+          }
         }
+      } else {
+        // Update existing quiz
+        const { error: updateError } = await sbFetch<any[]>(env, `quizzes?id=eq.${editingId}`, {
+          method: "PATCH",
+          body: { 
+            title: draft.title.trim(), 
+            description: draft.description?.trim() || "" 
+          },
+        })
+        if (updateError) throw new Error(updateError)
+
+        // For editing, we'll keep it simple and just update the quiz metadata
+        // Full question editing would require more complex logic to handle adds/updates/deletes
+        alert("Quiz updated! Note: Question editing is simplified - only title and description are updated.")
       }
+
       resetDraft()
       setCreating(false)
-      mutate()
-    } else {
-      // Update quiz title/description only (editing questions can be more complex; keep simple for now)
-      const upd = await sbFetch<any[]>(env, `quizzes?id=eq.${editingId}`, {
-        method: "PATCH",
-        body: { title: draft.title, description: draft.description || "" },
-      })
-      if (upd.error) return alert(upd.error)
       setEditingId(null)
-      resetDraft()
-      setCreating(false)
       mutate()
+    } catch (e: any) {
+      alert(`Error saving quiz: ${e.message}`)
     }
   }
 
@@ -186,25 +270,30 @@ export function QuizzesTab() {
   }
 
   function QuizItem({ q }: { q: any }) {
-    // Prefix-encode link params so the public page can safely detect & decode them (prevents atob errors)
     const link = pantryId && bucket ? `/q/b-${b64urlEncode(pantryId)}/b-${b64urlEncode(bucket)}/${q.id}` : "#"
+    
     async function stopQuiz() {
       if (!env) return
-      await sbFetch(env, `quizzes?id=eq.${q.id}`, { method: "PATCH", body: { status: "inactive" } })
-      mutate()
+      const { error } = await sbFetch(env, `quizzes?id=eq.${q.id}`, { method: "PATCH", body: { status: "inactive" } })
+      if (error) alert(`Error stopping quiz: ${error}`)
+      else mutate()
     }
+    
     async function deleteQuiz() {
       if (!env) return
       if (!confirm("Delete this quiz? This will remove all questions and options.")) return
-      await sbFetch(env, `quizzes?id=eq.${q.id}`, { method: "DELETE" })
-      mutate()
+      const { error } = await sbFetch(env, `quizzes?id=eq.${q.id}`, { method: "DELETE" })
+      if (error) alert(`Error deleting quiz: ${error}`)
+      else mutate()
     }
-    async function edit() {
+    
+    async function editQuiz() {
       setCreating(true)
       setEditingId(q.id)
-      setDraft((d) => ({ ...d, title: q.title, description: q.description || "" }))
+      await loadQuizForEdit(q.id)
       window.scrollTo({ top: 0, behavior: "smooth" })
     }
+    
     return (
       <div className="p-3 rounded-md bg-white/5 border border-white/10">
         <div className="flex items-center justify-between gap-2">
@@ -214,11 +303,11 @@ export function QuizzesTab() {
             <div className="text-xs opacity-60 mt-1">Status: {q.status}</div>
           </div>
           <div className="flex items-center gap-2">
-            <button onClick={edit} className="px-3 py-1 rounded bg-cyan-500 text-black text-sm">
-              Edit quiz
+            <button onClick={editQuiz} className="px-3 py-1 rounded bg-cyan-500 text-black text-sm">
+              Edit
             </button>
             <a href={link} className="px-3 py-1 rounded bg-white text-black text-sm" target="_blank" rel="noreferrer">
-              Get link
+              Link
             </a>
             <button onClick={stopQuiz} className="px-3 py-1 rounded bg-yellow-400 text-black text-sm">
               Stop
@@ -238,256 +327,215 @@ export function QuizzesTab() {
       try {
         const attemptsRes = await sbFetch<any[]>(
           env!,
-          `quiz_attempts${qs({ select: "id,completed_at", quiz_id: `eq.${quizId}` })}`,
+          `quiz_attempts${qs({ select: "id,completed_at,score", quiz_id: `eq.${quizId}` })}`,
         )
         if (attemptsRes.error) {
-          return { totalAttempts: 0, correctPct: 0 }
+          return { totalAttempts: 0, completedAttempts: 0, avgScore: 0 }
         }
-        const attemptIds = (attemptsRes.data || []).map((a: any) => a.id)
-        if (!attemptIds.length) return { totalAttempts: 0, correctPct: 0 }
-        const inList = attemptIds.join(",")
-        const answersRes = await sbFetch<any[]>(
-          env!,
-          `quiz_answers${qs({ select: "is_correct,attempt_id" })}&attempt_id=in.(${inList})`,
-        )
-        if (answersRes.error) {
-          return { totalAttempts: 0, correctPct: 0 }
-        }
-        const totalAttempts = (attemptsRes.data || []).filter((a: any) => a.completed_at)?.length || 0
-        const totalAnswers = (answersRes.data || []).length || 0
-        const correct = (answersRes.data || []).filter((a: any) => a.is_correct)?.length || 0
-        const correctPct = totalAnswers ? Math.round((correct / totalAnswers) * 100) : 0
-        return { totalAttempts, correctPct }
+        const attempts = attemptsRes.data || []
+        const completed = attempts.filter((a: any) => a.completed_at)
+        const totalAttempts = attempts.length
+        const completedAttempts = completed.length
+        const avgScore = completed.length > 0 
+          ? Math.round((completed.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / completed.length) * 100) / 100
+          : 0
+        return { totalAttempts, completedAttempts, avgScore }
       } catch {
-        return { totalAttempts: 0, correctPct: 0 }
+        return { totalAttempts: 0, completedAttempts: 0, avgScore: 0 }
       }
     })
+    
     if (isLoading) return <div className="text-xs opacity-60 mt-2">Loading stats...</div>
-    const totals = data || { totalAttempts: 0, correctPct: 0 }
+    const stats = data || { totalAttempts: 0, completedAttempts: 0, avgScore: 0 }
     return (
       <div className="text-xs opacity-80 mt-2">
-        Attempts: {totals.totalAttempts} • Avg Correct: {totals.correctPct}%
+        Attempts: {stats.totalAttempts} • Completed: {stats.completedAttempts} • Avg Score: {stats.avgScore}
       </div>
     )
   }
 
   function QuizBuilder() {
-    const [focusedInput, setFocusedInput] = React.useState<string | null>(null)
+    const updateDraft = React.useCallback((updater: (prev: QuizDraft) => QuizDraft) => {
+      setDraft(updater)
+    }, [])
+
+    const updateQuestion = React.useCallback((questionId: string, updater: (prev: QuestionDraft) => QuestionDraft) => {
+      updateDraft(draft => ({
+        ...draft,
+        questions: draft.questions.map(q => q.id === questionId ? updater(q) : q)
+      }))
+    }, [updateDraft])
+
+    const updateOption = React.useCallback((questionId: string, optionId: string, updater: (prev: OptionDraft) => OptionDraft) => {
+      updateQuestion(questionId, question => ({
+        ...question,
+        options: question.options.map(o => o.id === optionId ? updater(o) : o)
+      }))
+    }, [updateQuestion])
 
     return (
-      <div className="space-y-3">
-        <div className="grid gap-2" autoCorrect="off" autoCapitalize="off">
+      <div className="space-y-4">
+        <div className="grid gap-2">
           <label className="text-sm opacity-90">Quiz title</label>
           <input
-            className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
+            className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
             value={draft.title}
-            onChange={(e) => {
-              const value = e.target.value
-              setDraft((d) => ({ ...d, title: value }))
-            }}
-            placeholder="Enter title"
+            onChange={(e) => updateDraft(d => ({ ...d, title: e.target.value }))}
+            placeholder="Enter quiz title"
             autoComplete="off"
-            onFocus={() => setFocusedInput('title')}
-            onBlur={() => setFocusedInput(null)}
+            autoCorrect="off"
+            autoCapitalize="off"
           />
         </div>
-        <div className="grid gap-2" autoCorrect="off" autoCapitalize="off">
+        
+        <div className="grid gap-2">
           <label className="text-sm opacity-90">Description</label>
           <textarea
-            className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
+            className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white resize-none"
+            rows={2}
             value={draft.description}
-            onChange={(e) => {
-              const value = e.target.value
-              setDraft((d) => ({ ...d, description: value }))
-            }}
+            onChange={(e) => updateDraft(d => ({ ...d, description: e.target.value }))}
             placeholder="Describe this quiz"
             autoComplete="off"
-            onFocus={() => setFocusedInput('description')}
-            onBlur={() => setFocusedInput(null)}
+            autoCorrect="off"
+            autoCapitalize="off"
           />
         </div>
 
         <div className="space-y-4">
+          <h3 className="text-lg font-medium">Questions</h3>
           {draft.questions.map((q, idx) => (
-            <div key={q.id} className="p-3 rounded-md bg-white/5 border border-white/10">
-              <div className="flex items-center justify-between">
+            <div key={q.id} className="p-4 rounded-md bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between mb-3">
                 <div className="font-semibold">Question {idx + 1}</div>
-                <button
-                  className="text-xs opacity-80 hover:opacity-100"
-                  onClick={() => {
-                    setDraft((d) => ({ ...d, questions: d.questions.filter((x) => x.id !== q.id) }))
-                  }}
-                >
-                  Remove
-                </button>
+                {draft.questions.length > 1 && (
+                  <button
+                    className="text-xs opacity-80 hover:opacity-100 px-2 py-1 rounded bg-red-500/20 text-red-300"
+                    onClick={() => updateDraft(d => ({ ...d, questions: d.questions.filter(x => x.id !== q.id) }))}
+                  >
+                    Remove Question
+                  </button>
+                )}
               </div>
-              <div className="grid gap-2 mt-2" autoCorrect="off" autoCapitalize="off">
-                <label className="text-sm opacity-90">Prompt</label>
-                <textarea
-                  className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
-                  value={q.prompt}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setDraft((d) => ({
-                      ...d,
-                      questions: d.questions.map((x) => (x.id === q.id ? { ...x, prompt: value } : x)),
-                    }))
-                  }}
-                  placeholder="Enter the question"
-                  autoComplete="off"
-                  onFocus={() => setFocusedInput(`prompt-${q.id}`)}
-                  onBlur={() => setFocusedInput(null)}
-                />
-              </div>
-              <div className="grid gap-2 mt-2">
-                <label className="text-sm opacity-90">Detailed solution (text or HTML)</label>
-                <textarea
-                  className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
-                  value={q.solution_text}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setDraft((d) => ({
-                      ...d,
-                      questions: d.questions.map((x) => (x.id === q.id ? { ...x, solution_text: value } : x)),
-                    }))
-                  }}
-                  placeholder="Explain the answer... (or click Generate)"
-                  onFocus={() => setFocusedInput(`solution-${q.id}`)}
-                  onBlur={() => setFocusedInput(null)}
-                />
-                <button
-                  className="self-start px-2 py-1 rounded bg-white text-black text-xs"
-                  onClick={async () => {
-                    if (!pantryId || !bucket) return alert("Connect Pantry first.")
-                    const correct = q.options.find((o) => o.is_correct)
-                    const res = await fetch("/api/openrouter/explain", {
-                      method: "POST",
-                      headers: { "Content-Type": "application/json" },
-                      body: JSON.stringify({
-                        pantryId,
-                        bucket,
-                        question: q.prompt,
-                        correctAnswer: correct?.option_text || "",
-                      }),
-                    })
-                    const json = await res.json()
-                    if (!res.ok) return alert(json?.error || "Failed to generate")
-                    setDraft((d) => ({
-                      ...d,
-                      questions: d.questions.map((x) =>
-                        x.id === q.id ? { ...x, solution_text: json.html as string } : x,
-                      ),
-                    }))
-                  }}
-                >
-                  Generate solution
-                </button>
-              </div>
-              <div className="grid gap-2 mt-2">
-                <label className="text-sm opacity-90">Answer video URL</label>
-                <input
-                  className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
-                  value={q.solution_video_url}
-                  onChange={(e) => {
-                    const value = e.target.value
-                    setDraft((d) => ({
-                      ...d,
-                      questions: d.questions.map((x) =>
-                        x.id === q.id ? { ...x, solution_video_url: value } : x,
-                      ),
-                    }))
-                  }}
-                  placeholder="https://..."
-                  onFocus={() => setFocusedInput(`video-${q.id}`)}
-                  onBlur={() => setFocusedInput(null)}
-                />
-              </div>
-              <div className="mt-3">
-                <div className="font-medium mb-2">Options (mark one correct)</div>
+              
+              <div className="space-y-3">
+                <div className="grid gap-2">
+                  <label className="text-sm opacity-90">Question prompt</label>
+                  <textarea
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white resize-none"
+                    rows={2}
+                    value={q.prompt}
+                    onChange={(e) => updateQuestion(q.id, question => ({ ...question, prompt: e.target.value }))}
+                    placeholder="Enter the question"
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                  />
+                </div>
+                
+                <div className="grid gap-2">
+                  <label className="text-sm opacity-90">Solution explanation (optional)</label>
+                  <textarea
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white resize-none"
+                    rows={3}
+                    value={q.solution_text}
+                    onChange={(e) => updateQuestion(q.id, question => ({ ...question, solution_text: e.target.value }))}
+                    placeholder="Explain the correct answer..."
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                  />
+                  <button
+                    className="self-start px-3 py-1 rounded bg-white text-black text-xs"
+                    onClick={async () => {
+                      if (!pantryId || !bucket) return alert("Connect Pantry first.")
+                      const correct = q.options.find((o) => o.is_correct)
+                      if (!correct?.option_text.trim()) return alert("Mark a correct answer first.")
+                      
+                      try {
+                        const res = await fetch("/api/openrouter/explain", {
+                          method: "POST",
+                          headers: { "Content-Type": "application/json" },
+                          body: JSON.stringify({
+                            pantryId,
+                            bucket,
+                            question: q.prompt,
+                            correctAnswer: correct.option_text,
+                          }),
+                        })
+                        const json = await res.json()
+                        if (!res.ok) throw new Error(json?.error || "Failed to generate")
+                        updateQuestion(q.id, question => ({ ...question, solution_text: json.html }))
+                      } catch (e: any) {
+                        alert(`Failed to generate solution: ${e.message}`)
+                      }
+                    }}
+                  >
+                    Generate solution
+                  </button>
+                </div>
+                
+                <div className="grid gap-2">
+                  <label className="text-sm opacity-90">Solution video URL (optional)</label>
+                  <input
+                    className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
+                    value={q.solution_video_url}
+                    onChange={(e) => updateQuestion(q.id, question => ({ ...question, solution_video_url: e.target.value }))}
+                    placeholder="https://youtube.com/watch?v=..."
+                    autoComplete="off"
+                    autoCorrect="off"
+                    autoCapitalize="off"
+                  />
+                </div>
+
                 <div className="space-y-2">
-                  {q.options.map((o) => (
+                  <div className="font-medium text-sm">Answer Options (mark one correct)</div>
+                  {q.options.map((o, optIdx) => (
                     <div key={o.id} className="flex items-center gap-2">
                       <input
-                        className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white flex-1"
+                        className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
                         value={o.option_text}
-                        onChange={(e) => {
-                          const value = e.target.value
-                          setDraft((d) => ({
-                            ...d,
-                            questions: d.questions.map((x) =>
-                              x.id === q.id
-                                ? {
-                                    ...x,
-                                    options: x.options.map((y) =>
-                                      y.id === o.id ? { ...y, option_text: value } : y,
-                                    ),
-                                  }
-                                : x,
-                            ),
-                          }))
-                        }}
-                        placeholder="Option text"
+                        onChange={(e) => updateOption(q.id, o.id, option => ({ ...option, option_text: e.target.value }))}
+                        placeholder={`Option ${optIdx + 1}`}
                         autoComplete="off"
-                        inputMode="text"
-                        onFocus={() => setFocusedInput(`option-${o.id}`)}
-                        onBlur={() => setFocusedInput(null)}
+                        autoCorrect="off"
+                        autoCapitalize="off"
                       />
-                      <label className="text-sm flex items-center gap-1">
+                      <label className="text-sm flex items-center gap-1 whitespace-nowrap">
                         <input
                           type="radio"
                           name={`correct-${q.id}`}
                           checked={o.is_correct}
-                          onChange={() =>
-                            setDraft((d) => ({
-                              ...d,
-                              questions: d.questions.map((x) =>
-                                x.id === q.id
-                                  ? {
-                                      ...x,
-                                      options: x.options.map((y) => ({ ...y, is_correct: y.id === o.id })),
-                                    }
-                                  : x,
-                              ),
-                            }))
-                          }
+                          onChange={() => updateQuestion(q.id, question => ({
+                            ...question,
+                            options: question.options.map(opt => ({ ...opt, is_correct: opt.id === o.id }))
+                          }))}
                         />
                         Correct
                       </label>
-                      <button
-                        className="text-xs opacity-80 hover:opacity-100"
-                        onClick={() =>
-                          setDraft((d) => ({
-                            ...d,
-                            questions: d.questions.map((x) =>
-                              x.id === q.id ? { ...x, options: x.options.filter((y) => y.id !== o.id) } : x,
-                            ),
-                          }))
-                        }
-                      >
-                        Remove
-                      </button>
+                      {q.options.length > 2 && (
+                        <button
+                          className="text-xs opacity-80 hover:opacity-100 px-2 py-1 rounded bg-red-500/20 text-red-300"
+                          onClick={() => updateQuestion(q.id, question => ({
+                            ...question,
+                            options: question.options.filter(opt => opt.id !== o.id)
+                          }))}
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                   ))}
-                </div>
-                <div className="mt-2 flex items-center gap-2">
+                  
                   <button
-                    className="px-3 py-1 rounded bg-white text-black text-sm"
-                    onClick={() =>
-                      setDraft((d) => ({
-                        ...d,
-                        questions: d.questions.map((x) =>
-                          x.id === q.id
-                            ? {
-                                ...x,
-                                options: [
-                                  ...x.options,
-                                  { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                                ],
-                              }
-                            : x,
-                        ),
-                      }))
-                    }
+                    className="px-3 py-1 rounded bg-white/20 text-white text-sm"
+                    onClick={() => updateQuestion(q.id, question => ({
+                      ...question,
+                      options: [
+                        ...question.options,
+                        { id: crypto.randomUUID(), option_text: "", is_correct: false },
+                      ]
+                    }))}
                   >
                     Add option
                   </button>
@@ -497,37 +545,35 @@ export function QuizzesTab() {
           ))}
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-3 pt-4 border-t border-white/10">
           <button
-            className="px-3 py-1 rounded bg-white text-black text-sm"
-            onClick={() =>
-              setDraft((d) => ({
-                ...d,
-                questions: [
-                  ...d.questions,
-                  {
-                    id: crypto.randomUUID(),
-                    prompt: "",
-                    solution_text: "",
-                    solution_video_url: "",
-                    options: [
-                      { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                      { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                      { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                      { id: crypto.randomUUID(), option_text: "", is_correct: false },
-                    ],
-                  },
-                ],
-              }))
-            }
+            className="px-4 py-2 rounded bg-white/20 text-white text-sm"
+            onClick={() => updateDraft(d => ({
+              ...d,
+              questions: [
+                ...d.questions,
+                {
+                  id: crypto.randomUUID(),
+                  prompt: "",
+                  solution_text: "",
+                  solution_video_url: "",
+                  options: [
+                    { id: crypto.randomUUID(), option_text: "", is_correct: false },
+                    { id: crypto.randomUUID(), option_text: "", is_correct: false },
+                    { id: crypto.randomUUID(), option_text: "", is_correct: false },
+                    { id: crypto.randomUUID(), option_text: "", is_correct: false },
+                  ],
+                },
+              ],
+            }))}
           >
-            Add question
+            Add Question
           </button>
-          <button className="px-3 py-1 rounded bg-cyan-500 text-black text-sm" onClick={saveQuiz}>
-            {editingId ? "Save changes" : "Create quiz"}
+          <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" onClick={saveQuiz}>
+            {editingId ? "Save Changes" : "Create Quiz"}
           </button>
           <button
-            className="px-3 py-1 rounded bg-white/10 text-white text-sm"
+            className="px-4 py-2 rounded bg-white/10 text-white text-sm"
             onClick={() => {
               setCreating(false)
               setEditingId(null)
@@ -550,8 +596,8 @@ export function QuizzesTab() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Quizzes</h2>
         {!creating && (
-          <button className="px-3 py-1 rounded bg-cyan-500 text-black text-sm" onClick={() => setCreating(true)}>
-            Create new quiz
+          <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" onClick={() => setCreating(true)}>
+            Create New Quiz
           </button>
         )}
       </div>
