@@ -8,6 +8,7 @@ import { DashboardTab } from "@/components/dashboard-tab"
 import { QuizzesTab } from "@/components/quizzes-tab"
 import { UsersTab } from "@/components/users-tab"
 import { ShaderBackground } from "@/components/shader-background"
+import SettingsTab from "@/components/settings-tab"
 
 export type EnvPayload = {
   supabaseUrl: string
@@ -85,28 +86,35 @@ export default function FantomsPage() {
           <div className="space-y-6">
             <div className="flex gap-3">
               <button
-                className={`px-3 py-1 rounded ${tab === "dashboard" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                className={`px-3 py-1 rounded text-sm ${tab === "dashboard" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                 onClick={() => setTab("dashboard")}
               >
                 Dashboard
               </button>
               <button
-                className={`px-3 py-1 rounded ${tab === "quizzes" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                className={`px-3 py-1 rounded text-sm ${tab === "quizzes" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                 onClick={() => setTab("quizzes")}
               >
                 Quizzes
               </button>
               <button
-                className={`px-3 py-1 rounded ${tab === "users" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                className={`px-3 py-1 rounded text-sm ${tab === "users" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                 onClick={() => setTab("users")}
               >
                 Users
+              </button>
+              <button
+                className={`px-3 py-1 rounded text-sm ${tab === "settings" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                onClick={() => setTab("settings")}
+              >
+                Settings
               </button>
             </div>
 
             {tab === "dashboard" && <DashboardTab />}
             {tab === "quizzes" && <QuizzesTab />}
             {tab === "users" && <UsersTab />}
+            {tab === "settings" && <SettingsTab />}
           </div>
         )}
 
