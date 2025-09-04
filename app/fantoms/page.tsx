@@ -7,6 +7,7 @@ import { SqlInstructions } from "@/components/sql-instructions"
 import { DashboardTab } from "@/components/dashboard-tab"
 import { QuizzesTab } from "@/components/quizzes-tab"
 import { UsersTab } from "@/components/users-tab"
+import { SettingsTab } from "@/components/settings-tab"
 import { ShaderBackground } from "@/components/shader-background"
 
 export type EnvPayload = {
@@ -16,7 +17,7 @@ export type EnvPayload = {
 }
 
 type Step = "loader" | "auth" | "sql" | "main"
-type Tab = "dashboard" | "quizzes" | "users"
+type Tab = "dashboard" | "quizzes" | "users" | "settings"
 
 export default function FantomsPage() {
   const [step, setStep] = useState<Step>("loader")
@@ -102,11 +103,18 @@ export default function FantomsPage() {
               >
                 Users
               </button>
+              <button
+                className={`px-3 py-1 rounded ${tab === "settings" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                onClick={() => setTab("settings")}
+              >
+                Settings
+              </button>
             </div>
 
             {tab === "dashboard" && <DashboardTab />}
             {tab === "quizzes" && <QuizzesTab />}
             {tab === "users" && <UsersTab />}
+            {tab === "settings" && <SettingsTab />}
           </div>
         )}
 
