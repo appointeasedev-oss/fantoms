@@ -59,6 +59,78 @@ const COLOR_THEMES: ColorTheme[] = [
     colors: ["#0f1419", "#06b6d4", "#ffffff", "#0e7490", "#0891b2"],
     backgroundColor: "#0f1419"
   }
+  {
+    id: "crimson",
+    name: "Crimson Fire",
+    colors: ["#1a0505", "#dc2626", "#ffffff", "#7f1d1d", "#b91c1c"],
+    backgroundColor: "#1a0505"
+  },
+  {
+    id: "emerald",
+    name: "Emerald Dream",
+    colors: ["#051a0a", "#10b981", "#ffffff", "#064e3b", "#059669"],
+    backgroundColor: "#051a0a"
+  },
+  {
+    id: "amethyst",
+    name: "Amethyst Glow",
+    colors: ["#1a0a1a", "#a855f7", "#ffffff", "#581c87", "#7c3aed"],
+    backgroundColor: "#1a0a1a"
+  },
+  {
+    id: "sapphire",
+    name: "Sapphire Deep",
+    colors: ["#0a0f1a", "#3b82f6", "#ffffff", "#1e3a8a", "#2563eb"],
+    backgroundColor: "#0a0f1a"
+  },
+  {
+    id: "ruby",
+    name: "Ruby Passion",
+    colors: ["#1a0a0f", "#e11d48", "#ffffff", "#881337", "#be185d"],
+    backgroundColor: "#1a0a0f"
+  },
+  {
+    id: "jade",
+    name: "Jade Mystique",
+    colors: ["#0a1a14", "#059669", "#ffffff", "#064e3b", "#047857"],
+    backgroundColor: "#0a1a14"
+  },
+  {
+    id: "topaz",
+    name: "Topaz Shine",
+    colors: ["#1a1505", "#eab308", "#ffffff", "#713f12", "#ca8a04"],
+    backgroundColor: "#1a1505"
+  },
+  {
+    id: "onyx",
+    name: "Onyx Shadow",
+    colors: ["#0a0a0a", "#6b7280", "#ffffff", "#1f2937", "#374151"],
+    backgroundColor: "#0a0a0a"
+  },
+  {
+    id: "coral",
+    name: "Coral Reef",
+    colors: ["#1a0f0a", "#f97316", "#ffffff", "#9a3412", "#ea580c"],
+    backgroundColor: "#1a0f0a"
+  },
+  {
+    id: "midnight",
+    name: "Midnight Blue",
+    colors: ["#050a1a", "#1e40af", "#ffffff", "#1e3a8a", "#1d4ed8"],
+    backgroundColor: "#050a1a"
+  },
+  {
+    id: "aurora",
+    name: "Aurora Borealis",
+    colors: ["#0a1a1a", "#06b6d4", "#ffffff", "#0e7490", "#0891b2"],
+    backgroundColor: "#0a1a1a"
+  },
+  {
+    id: "volcano",
+    name: "Volcano Heat",
+    colors: ["#1a0a05", "#f59e0b", "#ffffff", "#92400e", "#d97706"],
+    backgroundColor: "#1a0a05"
+  }
 ]
 
 export function SettingsTab() {

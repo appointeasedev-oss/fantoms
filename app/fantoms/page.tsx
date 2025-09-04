@@ -16,7 +16,7 @@ export type EnvPayload = {
 }
 
 type Step = "loader" | "auth" | "sql" | "main"
-type Tab = "dashboard" | "quizzes" | "users"
+type Tab = "dashboard" | "quizzes" | "users" | "settings"
 
 export default function FantomsPage() {
   const [step, setStep] = useState<Step>("loader")
