@@ -33,7 +33,9 @@ export function QuizzesTab() {
     : null
 
   const [creating, setCreating] = React.useState(false)
+  const [creatingWithAI, setCreatingWithAI] = React.useState(false)
   const [editingId, setEditingId] = React.useState<string | null>(null)
+  const [aiForm, setAiForm] = React.useState({ topic: "", questionCount: 5, difficulty: "medium" })
   const [draft, setDraft] = React.useState<QuizDraft>({
     title: "",
     description: "",
@@ -214,6 +216,7 @@ export function QuizzesTab() {
                 tenant_key: env.tenantKey,
                 quiz_id: quiz.id,
                 prompt: q.prompt,
+                question_order: validQuestions.indexOf(q) + 1,
                 solution_text: toHtml(q.solution_text),
                 solution_video_url: q.solution_video_url,
               },
@@ -244,7 +247,8 @@ export function QuizzesTab() {
           method: "PATCH",
           body: { 
             title: draft.title.trim(), 
-            description: draft.description?.trim() || "" 
+            description: draft.description?.trim() || "",
+            question_count: validQuestions.length
           },
         })
         if (updateError) throw new Error(updateError)
@@ -256,10 +260,42 @@ export function QuizzesTab() {
 
       resetDraft()
       setCreating(false)
+      setCreatingWithAI(false)
       setEditingId(null)
       await mutate()
     } catch (e: any) {
       alert(`Error saving quiz: ${e.message}`)
+    }
+  }
+
+  async function createQuizWithAI() {
+    if (!pantryId || !bucket) return alert("Connect Pantry first.")
+    if (!aiForm.topic.trim()) return alert("Please enter a topic.")
+    if (aiForm.questionCount < 1 || aiForm.questionCount > 20) return alert("Question count must be between 1 and 20.")
+
+    try {
+      const res = await fetch("/api/openrouter/create-quiz", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          pantryId,
+          bucket,
+          topic: aiForm.topic,
+          questionCount: aiForm.questionCount,
+          difficulty: aiForm.difficulty,
+        }),
+      })
+      
+      const json = await res.json()
+      if (!res.ok) throw new Error(json?.error || "Failed to generate quiz")
+      
+      // Set the AI-generated quiz as the current draft
+      setDraft(json.quiz)
+      setCreatingWithAI(false)
+      setCreating(true)
+      
+    } catch (e: any) {
+      alert(`Failed to create quiz with AI: ${e.message}`)
     }
   }
 
@@ -272,12 +308,20 @@ export function QuizzesTab() {
       return (
         <div className="text-center py-8">
           <div className="opacity-80 mb-4">No quizzes yet. Create your first quiz.</div>
-          <button 
-            className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" 
-            onClick={() => setCreating(true)}
-          >
-            Create First Quiz
-          </button>
+          <div className="flex gap-3 justify-center">
+            <button 
+              className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" 
+              onClick={() => setCreating(true)}
+            >
+              Create Manually
+            </button>
+            <button 
+              className="px-4 py-2 rounded bg-purple-500 text-white text-sm font-medium" 
+              onClick={() => setCreatingWithAI(true)}
+            >
+              Create with AI
+            </button>
+          </div>
         </div>
       )
     }
@@ -321,7 +365,7 @@ export function QuizzesTab() {
           <div>
             <div className="font-semibold">{q.title}</div>
             <div className="text-sm opacity-80">{q.description}</div>
-            <div className="text-xs opacity-60 mt-1">Status: {q.status}</div>
+            <div className="text-xs opacity-60 mt-1">Status: {q.status} • Questions: {q.question_count || 0}</div>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={editQuiz} className="px-3 py-1 rounded bg-cyan-500 text-black text-sm">
@@ -371,6 +415,77 @@ export function QuizzesTab() {
     return (
       <div className="text-xs opacity-80 mt-2">
         Attempts: {stats.totalAttempts} • Completed: {stats.completedAttempts} • Avg Score: {stats.avgScore}
+      </div>
+    )
+  }
+
+  function AIQuizCreator() {
+    return (
+      <div className="space-y-4">
+        <h3 className="text-lg font-medium">Create Quiz with AI</h3>
+        <p className="text-sm text-white/80">Let AI generate a complete quiz for you based on your topic and requirements.</p>
+        
+        <div className="space-y-3">
+          <div>
+            <label className="block text-sm opacity-90 mb-1">Topic/Subject</label>
+            <textarea
+              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white resize-none"
+              rows={3}
+              value={aiForm.topic}
+              onChange={(e) => setAiForm(prev => ({ ...prev, topic: e.target.value }))}
+              placeholder="Describe the topic in detail (e.g., 'JavaScript fundamentals including variables, functions, and arrays for beginners')"
+              autoComplete="off"
+              autoCorrect="off"
+              autoCapitalize="off"
+            />
+          </div>
+          
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm opacity-90 mb-1">Number of Questions</label>
+              <input
+                type="number"
+                min="1"
+                max="20"
+                className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
+                value={aiForm.questionCount}
+                onChange={(e) => setAiForm(prev => ({ ...prev, questionCount: parseInt(e.target.value) || 5 }))}
+              />
+            </div>
+            
+            <div>
+              <label className="block text-sm opacity-90 mb-1">Difficulty Level</label>
+              <select
+                className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
+                value={aiForm.difficulty}
+                onChange={(e) => setAiForm(prev => ({ ...prev, difficulty: e.target.value }))}
+              >
+                <option value="easy">Easy</option>
+                <option value="medium">Medium</option>
+                <option value="hard">Hard</option>
+              </select>
+            </div>
+          </div>
+        </div>
+        
+        <div className="flex items-center gap-3 pt-4 border-t border-white/10">
+          <button
+            className="px-4 py-2 rounded bg-purple-500 text-white text-sm font-medium"
+            onClick={createQuizWithAI}
+            disabled={!aiForm.topic.trim()}
+          >
+            Generate Quiz with AI
+          </button>
+          <button
+            className="px-4 py-2 rounded bg-white/10 text-white text-sm"
+            onClick={() => {
+              setCreatingWithAI(false)
+              setAiForm({ topic: "", questionCount: 5, difficulty: "medium" })
+            }}
+          >
+            Cancel
+          </button>
+        </div>
       </div>
     )
   }
@@ -619,13 +734,18 @@ export function QuizzesTab() {
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Quizzes</h2>
         {!creating && (
-          <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" onClick={() => setCreating(true)}>
-            Create New Quiz
-          </button>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" onClick={() => setCreating(true)}>
+              Create Manually
+            </button>
+            <button className="px-4 py-2 rounded bg-purple-500 text-white text-sm font-medium" onClick={() => setCreatingWithAI(true)}>
+              Create with AI
+            </button>
+          </div>
         )}
       </div>
 
-      {creating ? <QuizBuilder /> : <QuizList />}
+      {creatingWithAI ? <AIQuizCreator /> : creating ? <QuizBuilder /> : <QuizList />}
     </div>
   )
 }

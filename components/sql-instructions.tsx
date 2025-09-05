@@ -27,6 +27,7 @@ create table if not exists public.quizzes (
   title text not null,
   description text,
   status text default 'active' check (status in ('active', 'inactive')),
+  question_count int default 0,
   created_at timestamptz default now()
 );
 
@@ -36,6 +37,7 @@ create table if not exists public.questions (
   tenant_key text not null,
   quiz_id uuid references public.quizzes(id) on delete cascade,
   prompt text not null,
+  question_order int default 1,
   solution_text text,
   solution_video_url text,
   created_at timestamptz default now()
@@ -88,6 +90,7 @@ create index if not exists idx_quizzes_tenant on public.quizzes(tenant_key);
 create index if not exists idx_quizzes_status on public.quizzes(status);
 create index if not exists idx_questions_quiz on public.questions(quiz_id);
 create index if not exists idx_questions_tenant on public.questions(tenant_key);
+create index if not exists idx_questions_order on public.questions(quiz_id, question_order);
 create index if not exists idx_options_question on public.options(question_id);
 create index if not exists idx_options_tenant on public.options(tenant_key);
 create index if not exists idx_users_tenant on public.quiz_users(tenant_key);

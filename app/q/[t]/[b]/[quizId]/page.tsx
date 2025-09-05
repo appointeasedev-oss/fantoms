@@ -41,6 +41,8 @@ export default function QuizTakePage() {
   const [attemptId, setAttemptId] = React.useState<string | null>(null)
   const [done, setDone] = React.useState(false)
   const [score, setScore] = React.useState<number | null>(null)
+  const [currentQuestionIndex, setCurrentQuestionIndex] = React.useState(0)
+  const [answers, setAnswers] = React.useState<Record<string, string>>({}) // question_id -> option_id
 
   // Show loader for 2 seconds
   React.useEffect(() => {
@@ -73,7 +75,7 @@ export default function QuizTakePage() {
   })
 
   const { data: qna } = useSWR(env && !showLoader ? ["qna", params.quizId] : null, async () => {
-    const questions = await sbFetch<any[]>(env!, `questions?select=*&quiz_id=eq.${params.quizId}`)
+    const questions = await sbFetch<any[]>(env!, `questions?select=*&quiz_id=eq.${params.quizId}&order=question_order.asc`)
     if (questions.error) throw new Error(questions.error)
     const qIds = (questions.data || []).map((x) => x.id)
     if (!qIds.length) return []
@@ -108,14 +110,41 @@ export default function QuizTakePage() {
     setAttemptId(res.data?.[0]?.id)
   }
 
-  async function submitAnswers(answers: { question_id: string; selected_option_id: string; is_correct: boolean }[]) {
+  function selectAnswer(questionId: string, optionId: string) {
+    setAnswers(prev => ({ ...prev, [questionId]: optionId }))
+  }
+
+  function nextQuestion() {
+    if (currentQuestionIndex < (qna?.length || 0) - 1) {
+      setCurrentQuestionIndex(prev => prev + 1)
+    }
+  }
+
+  function previousQuestion() {
+    if (currentQuestionIndex > 0) {
+      setCurrentQuestionIndex(prev => prev - 1)
+    }
+  }
+
+  async function submitQuiz() {
     if (!env || !attemptId) return
+    
+    const answerData = (qna || []).map((q) => {
+      const selected = answers[q.id]
+      const correct = q.options.find((o: any) => o.is_correct)
+      return {
+        question_id: q.id,
+        selected_option_id: selected || "",
+        is_correct: selected === correct?.id,
+      }
+    })
+    
     const ins = await sbFetch<any[]>(env, "quiz_answers", {
       method: "POST",
-      body: answers.map((a) => ({ tenant_key: env.tenantKey, attempt_id: attemptId, ...a })),
+      body: answerData.map((a) => ({ tenant_key: env.tenantKey, attempt_id: attemptId, ...a })),
     })
     if (ins.error) return alert(ins.error)
-    const sc = answers.filter((a) => a.is_correct).length
+    const sc = answerData.filter((a) => a.is_correct).length
     setScore(sc)
     await sbFetch(env, `quiz_attempts?id=eq.${attemptId}`, {
       method: "PATCH",
@@ -176,21 +205,28 @@ export default function QuizTakePage() {
               <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                 <div className="text-center mb-6">
                   <h1 className="text-2xl font-medium mb-2">Quiz Complete!</h1>
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">{score}/{qna.length}</div>
+                  <div className="text-3xl font-bold text-cyan-400 mb-2">{score}/{qna?.length}</div>
                   <p className="text-white/80">
-                    You scored {Math.round(((score || 0) / qna.length) * 100)}%
+                    You scored {Math.round(((score || 0) / (qna?.length || 1)) * 100)}%
                   </p>
                 </div>
                 
                 <div className="space-y-4">
                   <h3 className="text-lg font-medium">Review Answers:</h3>
-                  {qna.map((q: any, idx: number) => {
+                  {qna?.map((q: any, idx: number) => {
                     const correct = q.options.find((o: any) => o.is_correct)
+                    const selected = q.options.find((o: any) => o.id === answers[q.id])
+                    const isCorrect = answers[q.id] === correct?.id
                     return (
                       <div key={q.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
                         <div className="font-medium mb-2">
                           Q{idx + 1}. {q.prompt}
                         </div>
+                        {selected && (
+                          <div className={`text-sm mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                            {isCorrect ? '✓' : '✗'} Your Answer: {selected.option_text}
+                          </div>
+                        )}
                         <div className="text-sm text-green-400 mb-2">
                           ✓ Correct Answer: {correct?.option_text}
                         </div>
@@ -223,7 +259,15 @@ export default function QuizTakePage() {
                   <h1 className="text-2xl font-medium mb-2">{quiz.title}</h1>
                   <p className="text-white/80">{quiz.description}</p>
                 </div>
-                <QuizAttempt qna={qna} onSubmit={submitAnswers} />
+                <QuizTaking 
+                  qna={qna} 
+                  currentQuestionIndex={currentQuestionIndex}
+                  answers={answers}
+                  onSelectAnswer={selectAnswer}
+                  onNext={nextQuestion}
+                  onPrevious={previousQuestion}
+                  onSubmit={submitQuiz}
+                />
               </section>
             )}
           </main>
@@ -293,21 +337,32 @@ function LoginForm({ onLogin }: { onLogin: (userId: string, password: string) =>
   )
 }
 
-function QuizAttempt({
+function QuizTaking({
   qna,
+  currentQuestionIndex,
+  answers,
+  onSelectAnswer,
+  onNext,
+  onPrevious,
   onSubmit,
 }: {
   qna: any[]
-  onSubmit: (answers: { question_id: string; selected_option_id: string; is_correct: boolean }[]) => void
+  currentQuestionIndex: number
+  answers: Record<string, string>
+  onSelectAnswer: (questionId: string, optionId: string) => void
+  onNext: () => void
+  onPrevious: () => void
+  onSubmit: () => void
 }) {
-  const [answers, setAnswers] = React.useState<Record<string, string>>({}) // question_id -> option_id
   const [submitting, setSubmitting] = React.useState(false)
   
-  function choose(qid: string, oid: string) {
-    setAnswers((a) => ({ ...a, [qid]: oid }))
-  }
+  const currentQuestion = qna[currentQuestionIndex]
+  const isLastQuestion = currentQuestionIndex === qna.length - 1
+  const isFirstQuestion = currentQuestionIndex === 0
+  const answeredCount = Object.keys(answers).length
+  const progress = (answeredCount / qna.length) * 100
   
-  async function submit() {
+  async function handleSubmit() {
     const unanswered = qna.filter(q => !answers[q.id])
     if (unanswered.length > 0) {
       if (!confirm(`You have ${unanswered.length} unanswered questions. Submit anyway?`)) {
@@ -317,30 +372,20 @@ function QuizAttempt({
     
     setSubmitting(true)
     try {
-      const result = qna.map((q) => {
-        const selected = answers[q.id]
-        const correct = q.options.find((o: any) => o.is_correct)
-        return {
-          question_id: q.id,
-          selected_option_id: selected || "",
-          is_correct: selected === correct?.id,
-        }
-      })
-      await onSubmit(result)
+      await onSubmit()
     } finally {
       setSubmitting(false)
     }
   }
 
-  const answeredCount = Object.keys(answers).length
-  const progress = (answeredCount / qna.length) * 100
+  if (!currentQuestion) return null
 
   return (
     <div className="space-y-6">
       {/* Progress Bar */}
       <div className="space-y-2">
         <div className="flex justify-between text-sm text-white/80">
-          <span>Progress</span>
+          <span>Question {currentQuestionIndex + 1} of {qna.length}</span>
           <span>{answeredCount}/{qna.length} answered</span>
         </div>
         <div className="w-full bg-white/10 rounded-full h-2">
@@ -351,53 +396,69 @@ function QuizAttempt({
         </div>
       </div>
 
-      {/* Questions */}
-      <div className="space-y-6">
-        {qna.map((q, idx) => (
-          <div key={q.id} className="p-5 rounded-lg bg-white/5 border border-white/10">
-            <div className="font-medium text-lg mb-4">
-              <span className="text-cyan-400">Q{idx + 1}.</span> {q.prompt}
-            </div>
-            
-            <div className="space-y-3">
-              {q.options.map((o: any) => {
-                const isSelected = answers[q.id] === o.id
-                return (
-                  <label 
-                    key={o.id} 
-                    className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
-                      isSelected 
-                        ? "bg-cyan-500/20 border border-cyan-400/50" 
-                        : "bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20"
-                    }`}
-                  >
-                    <input
-                      type="radio"
-                      name={`q-${q.id}`}
-                      checked={isSelected}
-                      onChange={() => choose(q.id, o.id)}
-                      className="w-4 h-4 text-cyan-400 bg-transparent border-white/30 focus:ring-cyan-400 focus:ring-2"
-                    />
-                    <span className={isSelected ? "text-white" : "text-white/90"}>
-                      {o.option_text}
-                    </span>
-                  </label>
-                )
-              })}
-            </div>
-          </div>
-        ))}
+      {/* Current Question */}
+      <div className="p-5 rounded-lg bg-white/5 border border-white/10">
+        <div className="font-medium text-lg mb-4">
+          <span className="text-cyan-400">Q{currentQuestionIndex + 1}.</span> {currentQuestion.prompt}
+        </div>
+        
+        <div className="space-y-3">
+          {currentQuestion.options.map((o: any) => {
+            const isSelected = answers[currentQuestion.id] === o.id
+            return (
+              <label 
+                key={o.id} 
+                className={`flex items-center gap-3 p-3 rounded-lg cursor-pointer transition-all duration-200 ${
+                  isSelected 
+                    ? "bg-cyan-500/20 border border-cyan-400/50" 
+                    : "bg-white/5 border border-white/10 hover:bg-white/10 hover:border-white/20"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={`q-${currentQuestion.id}`}
+                  checked={isSelected}
+                  onChange={() => onSelectAnswer(currentQuestion.id, o.id)}
+                  className="w-4 h-4 text-cyan-400 bg-transparent border-white/30 focus:ring-cyan-400 focus:ring-2"
+                />
+                <span className={isSelected ? "text-white" : "text-white/90"}>
+                  {o.option_text}
+                </span>
+              </label>
+            )
+          })}
+        </div>
       </div>
 
-      {/* Submit Button */}
-      <div className="flex justify-center pt-4">
-        <button 
-          className="px-8 py-3 rounded-lg bg-white text-black font-medium hover:bg-white/90 transition-all duration-200 disabled:opacity-50 disabled:cursor-not-allowed"
-          onClick={submit}
-          disabled={submitting}
+      {/* Navigation Buttons */}
+      <div className="flex justify-between items-center pt-4">
+        <button
+          className="px-4 py-2 rounded-lg bg-white/10 text-white text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+          onClick={onPrevious}
+          disabled={isFirstQuestion}
         >
-          {submitting ? "Submitting..." : "Submit Quiz"}
+          Previous
         </button>
+        
+        <div className="flex gap-2">
+          {!isLastQuestion ? (
+            <button
+              className="px-6 py-2 rounded-lg bg-cyan-500 text-black text-sm font-medium"
+              onClick={onNext}
+            >
+              Next Question
+            </button>
+          ) : (
+            <button 
+              className="px-6 py-2 rounded-lg bg-white text-black font-medium text-sm disabled:opacity-50 disabled:cursor-not-allowed"
+              onClick={handleSubmit}
+              disabled={submitting}
+            >
+              {submitting ? "Submitting..." : "Submit Quiz"}
+            </button>
+          )}
+          </div>
+        ))}
       </div>
     </div>
   )
