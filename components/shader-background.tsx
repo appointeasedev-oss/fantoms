@@ -1,9 +1,10 @@
 "use client"
 
 import type React from "react"
-
 import { useEffect, useRef, useState } from "react"
 import { MeshGradient } from "@paper-design/shaders-react"
+import { useFantoms } from "./fantoms-context"
+import { COLOR_THEMES } from "./settings-tab"
 
 interface ShaderBackgroundProps {
   children: React.ReactNode
@@ -12,6 +13,10 @@ interface ShaderBackgroundProps {
 export function ShaderBackground({ children }: ShaderBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isActive, setIsActive] = useState(false)
+  const { pantryId, bucket } = useFantoms()
+
+  const [themeColors, setThemeColors] = useState<string[]>(COLOR_THEMES[0].colors)
+  const [bgColor, setBgColor] = useState<string>(COLOR_THEMES[0].backgroundColor)
 
   useEffect(() => {
     const handleMouseEnter = () => setIsActive(true)
@@ -23,13 +28,41 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
       container.addEventListener("mouseleave", handleMouseLeave)
     }
 
+    // Load settings from Pantry
+    async function loadTheme() {
+      if (!pantryId || !bucket) return
+
+      try {
+        const res = await fetch("/api/pantry/fetch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pantryId, bucket }),
+        })
+
+        if (res.ok) {
+          const data = await res.json()
+          const colorThemeId = data.data?.colorTheme || "default"
+          const theme = COLOR_THEMES.find((t) => t.id === colorThemeId) || COLOR_THEMES[0]
+          setThemeColors(theme.colors)
+          setBgColor(theme.backgroundColor)
+        }
+      } catch (err) {
+        console.warn("Failed to fetch Pantry settings, fallback to default:", err)
+        const theme = COLOR_THEMES[0]
+        setThemeColors(theme.colors)
+        setBgColor(theme.backgroundColor)
+      }
+    }
+
+    loadTheme()
+
     return () => {
       if (container) {
         container.removeEventListener("mouseenter", handleMouseEnter)
         container.removeEventListener("mouseleave", handleMouseLeave)
       }
     }
-  }, [])
+  }, [pantryId, bucket])
 
   return (
     <div ref={containerRef} className="min-h-screen bg-black relative overflow-hidden">
@@ -64,13 +97,13 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
       {/* Background Shaders */}
       <MeshGradient
         className="absolute inset-0 w-full h-full"
-        colors={["#000000", "#8b5cf6", "#ffffff", "#1e1b4b", "#4c1d95"]}
+        colors={themeColors}
         speed={0.3}
-        backgroundColor="#000000"
+        backgroundColor={bgColor}
       />
       <MeshGradient
         className="absolute inset-0 w-full h-full opacity-60"
-        colors={["#000000", "#ffffff", "#8b5cf6", "#000000"]}
+        colors={[bgColor, "#ffffff", themeColors[1], bgColor]}
         speed={0.2}
         wireframe="true"
         backgroundColor="transparent"
@@ -82,3 +115,4 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
 }
 
 export default ShaderBackground
+
