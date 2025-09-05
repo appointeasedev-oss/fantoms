@@ -15,50 +15,56 @@ const COLOR_THEMES: ColorTheme[] = [
     id: "default",
     name: "Cosmic Purple",
     colors: ["#000000", "#8b5cf6", "#ffffff", "#1e1b4b", "#4c1d95"],
-    backgroundColor: "#000000"
+    backgroundColor: "#000000",
   },
   {
     id: "ocean",
     name: "Ocean Blue",
     colors: ["#001122", "#0ea5e9", "#ffffff", "#0c4a6e", "#075985"],
-    backgroundColor: "#001122"
+    backgroundColor: "#001122",
   },
   {
     id: "sunset",
     name: "Sunset Orange",
     colors: ["#1a0f0a", "#f97316", "#ffffff", "#9a3412", "#ea580c"],
-    backgroundColor: "#1a0f0a"
+    backgroundColor: "#1a0f0a",
   },
   {
     id: "forest",
     name: "Forest Green",
     colors: ["#0a1a0f", "#22c55e", "#ffffff", "#166534", "#15803d"],
-    backgroundColor: "#0a1a0f"
+    backgroundColor: "#0a1a0f",
   },
   {
     id: "rose",
     name: "Rose Pink",
     colors: ["#1a0a14", "#f43f5e", "#ffffff", "#9f1239", "#e11d48"],
-    backgroundColor: "#1a0a14"
+    backgroundColor: "#1a0a14",
   },
   {
     id: "cyber",
     name: "Cyber Neon",
     colors: ["#0a0a1a", "#00ff88", "#ffffff", "#003322", "#00cc66"],
-    backgroundColor: "#0a0a1a"
+    backgroundColor: "#0a0a1a",
   },
   {
     id: "gold",
     name: "Golden Hour",
     colors: ["#1a1a0a", "#fbbf24", "#ffffff", "#92400e", "#f59e0b"],
-    backgroundColor: "#1a1a0a"
+    backgroundColor: "#1a1a0a",
   },
   {
     id: "arctic",
     name: "Arctic Ice",
     colors: ["#0f1419", "#06b6d4", "#ffffff", "#0e7490", "#0891b2"],
-    backgroundColor: "#0f1419"
-  }
+    backgroundColor: "#0f1419",
+  },
+  {
+    id: "monochrome",
+    name: "Black & White",
+    colors: ["#000000", "#ffffff", "#ffffff", "#333333", "#666666"],
+    backgroundColor: "#000000",
+  },
 ]
 
 export function SettingsTab() {
@@ -72,7 +78,7 @@ export function SettingsTab() {
     colorTheme: "default",
     supabaseUrl: "",
     supabaseAnonKey: "",
-    openrouterKey: ""
+    openrouterKey: "",
   })
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
@@ -81,7 +87,7 @@ export function SettingsTab() {
   // Load settings from Pantry
   React.useEffect(() => {
     if (!pantryId || !bucket) return
-    
+
     async function loadSettings() {
       setLoading(true)
       try {
@@ -90,7 +96,7 @@ export function SettingsTab() {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ pantryId, bucket }),
         })
-        
+
         if (res.ok) {
           const data = await res.json()
           if (data.data) {
@@ -98,55 +104,76 @@ export function SettingsTab() {
               colorTheme: data.data.colorTheme || "default",
               supabaseUrl: data.data.supabaseUrl || "",
               supabaseAnonKey: data.data.supabaseAnonKey || "",
-              openrouterKey: data.data.openrouterKey || ""
+              openrouterKey: data.data.openrouterKey || "",
             })
+          } else {
+            const defaultSettings = {
+              colorTheme: "default",
+              supabaseUrl: "",
+              supabaseAnonKey: "",
+              openrouterKey: "",
+              savedAt: new Date().toISOString(),
+            }
+
+            await fetch("/api/pantry/store", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ pantryId, bucket, data: defaultSettings }),
+            })
+
+            setSettings(defaultSettings)
           }
         }
       } catch (e) {
         console.error("Failed to load settings:", e)
+        setSettings((prev) => ({ ...prev, colorTheme: "default" }))
       } finally {
         setLoading(false)
       }
     }
-    
+
     loadSettings()
   }, [pantryId, bucket])
 
-  // Apply theme to background
+  // Apply theme to background and store in localStorage for quiz pages
   React.useEffect(() => {
-    const theme = COLOR_THEMES.find(t => t.id === settings.colorTheme) || COLOR_THEMES[0]
-    
-    // Update CSS custom properties for the shader background
+    const theme = COLOR_THEMES.find((t) => t.id === settings.colorTheme) || COLOR_THEMES[0]
+
     const root = document.documentElement
-    root.style.setProperty('--shader-colors', theme.colors.join(','))
-    root.style.setProperty('--shader-bg', theme.backgroundColor)
-    
-    // Trigger a custom event to update shader background
-    window.dispatchEvent(new CustomEvent('themeChange', { 
-      detail: { colors: theme.colors, backgroundColor: theme.backgroundColor }
-    }))
+    root.style.setProperty("--shader-colors", theme.colors.join(","))
+    root.style.setProperty("--shader-bg", theme.backgroundColor)
+    root.style.setProperty("--theme-primary", theme.colors[1])
+    root.style.setProperty("--theme-accent", theme.colors[3])
+
+    localStorage.setItem("fantoms-theme", JSON.stringify(theme))
+
+    window.dispatchEvent(
+      new CustomEvent("themeChange", {
+        detail: { colors: theme.colors, backgroundColor: theme.backgroundColor },
+      }),
+    )
   }, [settings.colorTheme])
 
   async function saveSettings() {
     if (!pantryId || !bucket) return
-    
+
     setSaving(true)
     try {
       const payload = {
         ...settings,
         savedAt: new Date().toISOString(),
       }
-      
+
       const res = await fetch("/api/pantry/store", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ pantryId, bucket, data: payload }),
       })
-      
+
       if (!res.ok) {
         throw new Error("Failed to save settings")
       }
-      
+
       alert("Settings saved successfully!")
     } catch (e: any) {
       alert(`Failed to save settings: ${e.message}`)
@@ -155,8 +182,8 @@ export function SettingsTab() {
     }
   }
 
-  function updateSetting<K extends keyof typeof settings>(key: K, value: typeof settings[K]) {
-    setSettings(prev => ({ ...prev, [key]: value }))
+  function updateSetting<K extends keyof typeof settings>(key: K, value: (typeof settings)[K]) {
+    setSettings((prev) => ({ ...prev, [key]: value }))
   }
 
   if (loading) {
@@ -172,7 +199,7 @@ export function SettingsTab() {
     <div className="p-4 text-white space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Settings</h2>
-        <button 
+        <button
           className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium disabled:opacity-50"
           onClick={saveSettings}
           disabled={saving}
@@ -184,7 +211,7 @@ export function SettingsTab() {
       {/* Color Theme Section */}
       <section className="p-4 rounded-lg bg-white/5 border border-white/10">
         <h3 className="text-lg font-medium mb-4">Color Theme</h3>
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
           {COLOR_THEMES.map((theme) => (
             <button
               key={theme.id}
@@ -196,15 +223,15 @@ export function SettingsTab() {
               onClick={() => updateSetting("colorTheme", theme.id)}
             >
               <div className="flex items-center gap-2 mb-2">
-                <div 
+                <div
                   className="w-4 h-4 rounded-full border border-white/30"
                   style={{ backgroundColor: theme.colors[1] }}
                 />
-                <div 
+                <div
                   className="w-4 h-4 rounded-full border border-white/30"
                   style={{ backgroundColor: theme.colors[2] }}
                 />
-                <div 
+                <div
                   className="w-4 h-4 rounded-full border border-white/30"
                   style={{ backgroundColor: theme.colors[3] }}
                 />
@@ -219,14 +246,11 @@ export function SettingsTab() {
       <section className="p-4 rounded-lg bg-white/5 border border-white/10">
         <div className="flex items-center justify-between mb-4">
           <h3 className="text-lg font-medium">Supabase Configuration</h3>
-          <button
-            className="px-3 py-1 rounded bg-white/20 text-white text-sm"
-            onClick={() => setShowKeys(!showKeys)}
-          >
+          <button className="px-3 py-1 rounded bg-white/20 text-white text-sm" onClick={() => setShowKeys(!showKeys)}>
             {showKeys ? "Hide" : "Show"} Keys
           </button>
         </div>
-        
+
         <div className="space-y-3">
           <div>
             <label className="block text-sm opacity-90 mb-1">Supabase URL</label>
@@ -239,7 +263,7 @@ export function SettingsTab() {
               autoComplete="off"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm opacity-90 mb-1">Supabase Anon Key</label>
             <input
@@ -251,7 +275,7 @@ export function SettingsTab() {
               autoComplete="off"
             />
           </div>
-          
+
           <div>
             <label className="block text-sm opacity-90 mb-1">OpenRouter API Key</label>
             <input
@@ -293,4 +317,5 @@ export function SettingsTab() {
   )
 }
 
+export { COLOR_THEMES }
 export default SettingsTab
