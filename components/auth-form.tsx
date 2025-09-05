@@ -214,8 +214,7 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
       </button>
 
       <p className="text-[10px] text-white/60 mt-3">
-        Note: This demo stores your Supabase URL, anon key, and OpenRouter API key in your Pantry bucket. Use test
-        credentials only.
+        Note: By contuning you aggree to our *terms and conditions*.
       </p>
     </section>
   )
