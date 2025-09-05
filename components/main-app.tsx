@@ -6,6 +6,7 @@ import { FantomsProvider } from "./fantoms-context"
 import DashboardTab from "./dashboard-tab"
 import QuizzesTab from "./quizzes-tab"
 import UsersTab from "./users-tab"
+import SettingsTab from "./settings-tab"
 
 type Props = {
   pantryId: string
@@ -17,13 +18,12 @@ type Props = {
 
 export default function MainApp({ pantryId, bucket, supabaseUrl, supabaseAnonKey, onLogout }: Props) {
   const supa = useMemo(() => makeClient(supabaseUrl, supabaseAnonKey), [supabaseUrl, supabaseAnonKey])
-  const [activeTab, setActiveTab] = useState<"Dashboard" | "Quizzes" | "Users">("Dashboard")
+  const [activeTab, setActiveTab] = useState<"Dashboard" | "Quizzes" | "Users" | "Settings">("Dashboard")
   const [status, setStatus] = useState<{ pantry: boolean; supabase: boolean; error?: string }>({
     pantry: Boolean(pantryId && bucket),
     supabase: false,
   })
 
-  // Basic status check: test if tables exist by listing quizzes (should 200 after SQL)
   useEffect(() => {
     let cancelled = false
     ;(async () => {
@@ -50,7 +50,7 @@ export default function MainApp({ pantryId, bucket, supabaseUrl, supabaseAnonKey
         </div>
 
         <div className="flex items-center gap-2 mb-4">
-          {(["Dashboard", "Quizzes", "Users"] as const).map((t) => (
+          {(["Dashboard", "Quizzes", "Users", "Settings"] as const).map((t) => (
             <button
               key={t}
               className={`px-3 py-2 rounded-lg text-sm ${
@@ -66,7 +66,9 @@ export default function MainApp({ pantryId, bucket, supabaseUrl, supabaseAnonKey
         {activeTab === "Dashboard" && <DashboardTab />}
         {activeTab === "Quizzes" && <QuizzesTab />}
         {activeTab === "Users" && <UsersTab />}
+        {activeTab === "Settings" && <SettingsTab />}
       </section>
     </FantomsProvider>
   )
 }
+
