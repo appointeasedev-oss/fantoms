@@ -3,20 +3,32 @@
 import type React from "react"
 import { useEffect, useRef, useState } from "react"
 import { MeshGradient } from "@paper-design/shaders-react"
-import { useFantoms } from "./fantoms-context"
-import { COLOR_THEMES } from "./settings-tab"
 
 interface ShaderBackgroundProps {
   children: React.ReactNode
 }
 
+// Default theme colors
+const DEFAULT_COLORS = ["#000000", "#8b5cf6", "#ffffff", "#1e1b4b", "#4c1d95"]
+const DEFAULT_BG = "#000000"
+
 export function ShaderBackground({ children }: ShaderBackgroundProps) {
   const containerRef = useRef<HTMLDivElement>(null)
   const [isActive, setIsActive] = useState(false)
-  const { pantryId, bucket } = useFantoms()
+  const [themeColors, setThemeColors] = useState<string[]>(DEFAULT_COLORS)
+  const [bgColor, setBgColor] = useState<string>(DEFAULT_BG)
+  const [pantryId, setPantryId] = useState<string | null>(null)
+  const [bucket, setBucket] = useState<string | null>(null)
 
-  const [themeColors, setThemeColors] = useState<string[]>(COLOR_THEMES[0].colors)
-  const [bgColor, setBgColor] = useState<string>(COLOR_THEMES[0].backgroundColor)
+  // Get pantry credentials from localStorage or context
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const storedPantryId = localStorage.getItem("fantoms.pantryId")
+      const storedBucket = localStorage.getItem("fantoms.bucket")
+      setPantryId(storedPantryId)
+      setBucket(storedBucket)
+    }
+  }, [])
 
   useEffect(() => {
     const handleMouseEnter = () => setIsActive(true)
@@ -28,9 +40,14 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
       container.addEventListener("mouseleave", handleMouseLeave)
     }
 
-    // Load settings from Pantry
+    // Load theme from Pantry
     async function loadTheme() {
-      if (!pantryId || !bucket) return
+      if (!pantryId || !bucket) {
+        // Use default theme if no pantry credentials
+        setThemeColors(DEFAULT_COLORS)
+        setBgColor(DEFAULT_BG)
+        return
+      }
 
       try {
         const res = await fetch("/api/pantry/fetch", {
@@ -42,25 +59,40 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
         if (res.ok) {
           const data = await res.json()
           const colorThemeId = data.data?.colorTheme || "default"
-          const theme = COLOR_THEMES.find((t) => t.id === colorThemeId) || COLOR_THEMES[0]
+          
+          // Get theme from predefined themes
+          const theme = getThemeById(colorThemeId)
           setThemeColors(theme.colors)
           setBgColor(theme.backgroundColor)
+        } else {
+          // Fallback to default
+          setThemeColors(DEFAULT_COLORS)
+          setBgColor(DEFAULT_BG)
         }
       } catch (err) {
-        console.warn("Failed to fetch Pantry settings, fallback to default:", err)
-        const theme = COLOR_THEMES[0]
-        setThemeColors(theme.colors)
-        setBgColor(theme.backgroundColor)
+        console.warn("Failed to fetch theme from Pantry, using default:", err)
+        setThemeColors(DEFAULT_COLORS)
+        setBgColor(DEFAULT_BG)
       }
     }
 
     loadTheme()
+
+    // Listen for theme changes
+    const handleThemeChange = (event: CustomEvent) => {
+      const { colors, backgroundColor } = event.detail
+      setThemeColors(colors)
+      setBgColor(backgroundColor)
+    }
+
+    window.addEventListener("themeChange", handleThemeChange as EventListener)
 
     return () => {
       if (container) {
         container.removeEventListener("mouseenter", handleMouseEnter)
         container.removeEventListener("mouseleave", handleMouseLeave)
       }
+      window.removeEventListener("themeChange", handleThemeChange as EventListener)
     }
   }, [pantryId, bucket])
 
@@ -112,6 +144,62 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
       {children}
     </div>
   )
+}
+
+// Predefined color themes
+function getThemeById(id: string) {
+  const themes = [
+    {
+      id: "default",
+      name: "Cosmic Purple",
+      colors: ["#000000", "#8b5cf6", "#ffffff", "#1e1b4b", "#4c1d95"],
+      backgroundColor: "#000000",
+    },
+    {
+      id: "ocean",
+      name: "Ocean Blue",
+      colors: ["#001122", "#0ea5e9", "#ffffff", "#0c4a6e", "#075985"],
+      backgroundColor: "#001122",
+    },
+    {
+      id: "sunset",
+      name: "Sunset Orange",
+      colors: ["#1a0f0a", "#f97316", "#ffffff", "#9a3412", "#ea580c"],
+      backgroundColor: "#1a0f0a",
+    },
+    {
+      id: "forest",
+      name: "Forest Green",
+      colors: ["#0a1a0f", "#22c55e", "#ffffff", "#166534", "#15803d"],
+      backgroundColor: "#0a1a0f",
+    },
+    {
+      id: "rose",
+      name: "Rose Pink",
+      colors: ["#1a0a14", "#f43f5e", "#ffffff", "#9f1239", "#e11d48"],
+      backgroundColor: "#1a0a14",
+    },
+    {
+      id: "cyber",
+      name: "Cyber Neon",
+      colors: ["#0a0a1a", "#00ff88", "#ffffff", "#003322", "#00cc66"],
+      backgroundColor: "#0a0a1a",
+    },
+    {
+      id: "gold",
+      name: "Golden Hour",
+      colors: ["#1a1a0a", "#fbbf24", "#ffffff", "#92400e", "#f59e0b"],
+      backgroundColor: "#1a1a0a",
+    },
+    {
+      id: "arctic",
+      name: "Arctic Ice",
+      colors: ["#0f1419", "#06b6d4", "#ffffff", "#0e7490", "#0891b2"],
+      backgroundColor: "#0f1419",
+    },
+  ]
+  
+  return themes.find(t => t.id === id) || themes[0]
 }
 
 export default ShaderBackground

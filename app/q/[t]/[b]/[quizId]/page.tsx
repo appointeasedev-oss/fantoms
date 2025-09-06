@@ -5,8 +5,8 @@ import useSWR from "swr"
 import { useParams } from "next/navigation"
 import { b64urlDecode, tenantKeyFrom, stripPrefix, isPrefixedEncoded } from "@/lib/encoding"
 import { sbFetch, type SupaEnv } from "@/lib/supabase-rest"
-import ShaderBackground from "@/components/shader-background"
-import LoaderScreen from "@/components/loader-screen"
+import { ShaderBackground } from "@/components/shader-background"
+import { LoaderScreen } from "@/components/loader-screen"
 
 function shuffle<T>(arr: T[]) {
   const a = [...arr]

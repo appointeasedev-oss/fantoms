@@ -2,8 +2,16 @@
 
 import { PulsingBorder } from "@paper-design/shaders-react"
 import { motion } from "framer-motion"
+import { useEffect } from "react"
 
-export function LoaderScreen() {
+export function LoaderScreen({ onDone }: { onDone?: () => void }) {
+  useEffect(() => {
+    if (onDone) {
+      const timer = setTimeout(onDone, 2000)
+      return () => clearTimeout(timer)
+    }
+  }, [onDone])
+
   return (
     <div className="w-full h-full flex items-center justify-center">
       <div className="relative w-40 h-40 flex items-center justify-center">

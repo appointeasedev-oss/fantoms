@@ -9,6 +9,7 @@ import { QuizzesTab } from "@/components/quizzes-tab"
 import { UsersTab } from "@/components/users-tab"
 import { SettingsTab } from "@/components/settings-tab"
 import { ShaderBackground } from "@/components/shader-background"
+import { FantomsProvider } from "@/components/fantoms-context"
 
 export type EnvPayload = {
   supabaseUrl: string
@@ -37,89 +38,92 @@ export default function FantomsPage() {
 
   return (
     <main className="relative min-h-screen">
-      <ShaderBackground />
-      <div className="relative z-10 container mx-auto max-w-2xl px-4 py-8 text-white">
-        {step === "loader" && <LoaderScreen onDone={() => setStep("auth")} />}
+      <FantomsProvider pantryId={pantryId} bucket={bucket} supabaseUrl={env?.supabaseUrl} supabaseAnonKey={env?.supabaseAnonKey}>
+        <ShaderBackground>
+          <div className="relative z-10 container mx-auto max-w-2xl px-4 py-8 text-white">
+            {step === "loader" && <LoaderScreen onDone={() => setStep("auth")} />}
 
-        {step === "auth" && (
-          <div className="space-y-6">
-            <h1 className="text-3xl font-semibold">Fantoms</h1>
-            <p className="text-white/80">
-              Sign up to connect your Pantry and Supabase, or log in with existing Pantry details.
-            </p>
-            <AuthForm
-              onSignupDone={({ pantryId, bucket, env }) => {
-                setPantryId(pantryId)
-                setBucket(bucket)
-                setEnv(env)
-                setStep("sql")
-              }}
-              onSignupComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey, openrouterKey }) => {
-                setPantryId(pantryId)
-                setBucket(bucket)
-                setEnv({ supabaseUrl, supabaseAnonKey, openrouterKey })
-                setStep("sql")
-              }}
-              onLoginComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey }) => {
-                setPantryId(pantryId)
-                setBucket(bucket)
-                setEnv({ supabaseUrl, supabaseAnonKey, openrouterKey: "" })
-                setStep("main")
-              }}
-            />
+            {step === "auth" && (
+              <div className="space-y-6">
+                <h1 className="text-3xl font-semibold">Fantoms</h1>
+                <p className="text-white/80">
+                  Sign up to connect your Pantry and Supabase, or log in with existing Pantry details.
+                </p>
+                <AuthForm
+                  onSignupDone={({ pantryId, bucket, env }) => {
+                    setPantryId(pantryId)
+                    setBucket(bucket)
+                    setEnv(env)
+                    setStep("sql")
+                  }}
+                  onSignupComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey, openrouterKey }) => {
+                    setPantryId(pantryId)
+                    setBucket(bucket)
+                    setEnv({ supabaseUrl, supabaseAnonKey, openrouterKey })
+                    setStep("sql")
+                  }}
+                  onLoginComplete={({ pantryId, bucket, supabaseUrl, supabaseAnonKey }) => {
+                    setPantryId(pantryId)
+                    setBucket(bucket)
+                    setEnv({ supabaseUrl, supabaseAnonKey, openrouterKey: "" })
+                    setStep("main")
+                  }}
+                />
+              </div>
+            )}
+
+            {step === "sql" && (
+              <div className="space-y-6">
+                <h2 className="text-2xl font-semibold">One-time setup</h2>
+                <p className="text-white/80">Run the SQL in your Supabase project. Then continue.</p>
+                <SqlInstructions 
+                  supabaseUrl={env?.supabaseUrl || ""}
+                  onContinue={() => setStep("main")}
+                  onBack={() => setStep("auth")}
+                />
+              </div>
+            )}
+
+            {step === "main" && env && (
+              <div className="space-y-6">
+                <div className="flex gap-3">
+                  <button
+                    className={`px-3 py-1 rounded ${tab === "dashboard" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    onClick={() => setTab("dashboard")}
+                  >
+                    Dashboard
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded ${tab === "quizzes" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    onClick={() => setTab("quizzes")}
+                  >
+                    Quizzes
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded ${tab === "users" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    onClick={() => setTab("users")}
+                  >
+                    Users
+                  </button>
+                  <button
+                    className={`px-3 py-1 rounded ${tab === "settings" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    onClick={() => setTab("settings")}
+                  >
+                    Settings
+                  </button>
+                </div>
+
+                {tab === "dashboard" && <DashboardTab />}
+                {tab === "quizzes" && <QuizzesTab />}
+                {tab === "users" && <UsersTab />}
+                {tab === "settings" && <SettingsTab />}
+              </div>
+            )}
+
+            {!env && step === "main" && <p className="text-red-300">Missing environment. Please log in again.</p>}
           </div>
-        )}
-
-        {step === "sql" && (
-          <div className="space-y-6">
-            <h2 className="text-2xl font-semibold">One-time setup</h2>
-            <p className="text-white/80">Run the SQL in your Supabase project. Then continue.</p>
-            <SqlInstructions 
-              supabaseUrl={env?.supabaseUrl || ""}
-              onContinue={() => setStep("main")}
-              onBack={() => setStep("auth")}
-            />
-          </div>
-        )}
-
-        {step === "main" && env && (
-          <div className="space-y-6">
-            <div className="flex gap-3">
-              <button
-                className={`px-3 py-1 rounded ${tab === "dashboard" ? "bg-white text-black" : "bg-white/10 text-white"}`}
-                onClick={() => setTab("dashboard")}
-              >
-                Dashboard
-              </button>
-              <button
-                className={`px-3 py-1 rounded ${tab === "quizzes" ? "bg-white text-black" : "bg-white/10 text-white"}`}
-                onClick={() => setTab("quizzes")}
-              >
-                Quizzes
-              </button>
-              <button
-                className={`px-3 py-1 rounded ${tab === "users" ? "bg-white text-black" : "bg-white/10 text-white"}`}
-                onClick={() => setTab("users")}
-              >
-                Users
-              </button>
-              <button
-                className={`px-3 py-1 rounded ${tab === "settings" ? "bg-white text-black" : "bg-white/10 text-white"}`}
-                onClick={() => setTab("settings")}
-              >
-                Settings
-              </button>
-            </div>
-
-            {tab === "dashboard" && <DashboardTab />}
-            {tab === "quizzes" && <QuizzesTab />}
-            {tab === "users" && <UsersTab />}
-            {tab === "settings" && <SettingsTab />}
-          </div>
-        )}
-
-        {!env && step === "main" && <p className="text-red-300">Missing environment. Please log in again.</p>}
-      </div>
+        </ShaderBackground>
+      </FantomsProvider>
     </main>
   )
 }

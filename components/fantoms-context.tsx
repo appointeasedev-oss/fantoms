@@ -36,22 +36,26 @@ export function FantomsProvider({
   // Initialize from props, falling back to localStorage
   React.useEffect(() => {
     if (pantryIdProp && bucketProp) {
-      localStorage.setItem("fantoms.pantryId", pantryIdProp)
-      localStorage.setItem("fantoms.bucket", bucketProp)
+      if (typeof window !== 'undefined') {
+        localStorage.setItem("fantoms.pantryId", pantryIdProp)
+        localStorage.setItem("fantoms.bucket", bucketProp)
+      }
       setPantryId(pantryIdProp)
       setBucket(bucketProp)
       return
     }
-    const pid = localStorage.getItem("fantoms.pantryId")
-    const b = localStorage.getItem("fantoms.bucket")
-    if (pid && b) {
-      setPantryId(pid)
-      setBucket(b)
+    if (typeof window !== 'undefined') {
+      const pid = localStorage.getItem("fantoms.pantryId")
+      const b = localStorage.getItem("fantoms.bucket")
+      if (pid && b) {
+        setPantryId(pid)
+        setBucket(b)
+      }
     }
   }, [pantryIdProp, bucketProp])
 
   const { data, error, isLoading } = useSWR(
-    pantryId && bucket ? ["pantry-fetch", pantryId, bucket] : null,
+    pantryId && bucket && typeof window !== 'undefined' ? ["pantry-fetch", pantryId, bucket] : null,
     async () => {
       const res = await fetch("/api/pantry/fetch", {
         method: "POST",
@@ -69,8 +73,10 @@ export function FantomsProvider({
   const tenantKey = pantryId && bucket ? tenantKeyFrom(pantryId, bucket) : null
 
   const setPantry = React.useCallback((pid: string, b: string) => {
-    localStorage.setItem("fantoms.pantryId", pid)
-    localStorage.setItem("fantoms.bucket", b)
+    if (typeof window !== 'undefined') {
+      localStorage.setItem("fantoms.pantryId", pid)
+      localStorage.setItem("fantoms.bucket", b)
+    }
     setPantryId(pid)
     setBucket(b)
   }, [])
