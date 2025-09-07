@@ -1,7 +1,6 @@
 "use client"
 
 import { useState } from "react"
-import { createPasswordVerification, verifyPassword } from "@/lib/encryption"
 
 export type AuthSignupResult = {
   pantryId: string
@@ -9,7 +8,6 @@ export type AuthSignupResult = {
   supabaseUrl: string
   supabaseAnonKey: string
   openrouterKey: string
-  password: string
   pantryOk: boolean
 }
 
@@ -18,7 +16,6 @@ export type AuthLoginResult = {
   bucket: string
   supabaseUrl: string
   supabaseAnonKey: string
-  password: string
   pantryOk: boolean
 }
 
@@ -27,20 +24,20 @@ type Props = {
   onLoginComplete: (r: AuthLoginResult) => void
 }
 
-async function storeToPantry(pantryId: string, bucket: string, data: unknown, password: string) {
+async function storeToPantry(pantryId: string, bucket: string, data: unknown) {
   const res = await fetch("/api/pantry/store", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pantryId, bucket, data, password }),
+    body: JSON.stringify({ pantryId, bucket, data }),
   })
   return (await res.json()) as { ok: boolean; status: number; statusText: string; error?: string }
 }
 
-async function fetchFromPantry(pantryId: string, bucket: string, password: string) {
+async function fetchFromPantry(pantryId: string, bucket: string) {
   const res = await fetch("/api/pantry/fetch", {
     method: "POST",
     headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ pantryId, bucket, password }),
+    body: JSON.stringify({ pantryId, bucket }),
   })
   return (await res.json()) as { ok: boolean; data?: any; error?: string; status?: number }
 }
@@ -53,7 +50,6 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
   // shared
   const [pantryId, setPantryId] = useState("")
   const [bucket, setBucket] = useState("fantoms")
-  const [password, setPassword] = useState("")
 
   // signup-only
   const [supabaseUrl, setSupabaseUrl] = useState("")
@@ -64,19 +60,14 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
     setError(null)
     setLoading(true)
     try {
-      // Create password verification hash
-      const passwordVerification = await createPasswordVerification(password)
-      
       // Store Supabase URL + anon key inside Pantry bucket
       const payload = {
         supabaseUrl,
         supabaseAnonKey,
-        openrouterKey,
-        passwordVerification, // Store encrypted password verification
+        openrouterKey, // <— store key
         savedAt: new Date().toISOString(),
       }
-      
-      const pantryRes = await storeToPantry(pantryId.trim(), bucket.trim(), payload, password)
+      const pantryRes = await storeToPantry(pantryId.trim(), bucket.trim(), payload)
 
       onSignupComplete({
         pantryId: pantryId.trim(),
@@ -84,7 +75,6 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
         supabaseUrl,
         supabaseAnonKey,
         openrouterKey,
-        password,
         pantryOk: pantryRes.ok,
       })
     } catch (e: any) {
@@ -98,31 +88,15 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
     setError(null)
     setLoading(true)
     try {
-      const fetchRes = await fetchFromPantry(pantryId.trim(), bucket.trim(), password)
+      const fetchRes = await fetchFromPantry(pantryId.trim(), bucket.trim())
       if (!fetchRes.ok || !fetchRes.data) {
         setError(fetchRes.error || "Could not fetch stored credentials")
         setLoading(false)
         return
       }
 
-      const creds = fetchRes.data as { 
-        supabaseUrl?: string; 
-        supabaseAnonKey?: string; 
-        openrouterKey?: string;
-        passwordVerification?: string;
-      }
-      
-      // Verify password
-      if (creds.passwordVerification) {
-        const isValidPassword = await verifyPassword(password, creds.passwordVerification)
-        if (!isValidPassword) {
-          setError("Invalid password")
-          setLoading(false)
-          return
-        }
-      }
-      
-      if (!creds?.supabaseUrl || !creds?.supabaseAnonKey) {
+      const creds = fetchRes.data as { supabaseUrl?: string; supabaseAnonKey?: string; openrouterKey?: string }
+      if (!creds?.supabaseUrl || !creds?.supabaseAnonKey || !creds?.openrouterKey) {
         setError("Stored credentials incomplete. Please sign up again.")
         setLoading(false)
         return
@@ -133,7 +107,6 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
         bucket: bucket.trim(),
         supabaseUrl: creds.supabaseUrl,
         supabaseAnonKey: creds.supabaseAnonKey,
-        password,
         pantryOk: true,
       })
     } catch (e: any) {
@@ -192,20 +165,6 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
             onChange={(e) => setBucket(e.target.value)}
           />
         </div>
-        
-        <div>
-          <label className="block text-xs mb-1">Master Password</label>
-          <input
-            type="password"
-            className="w-full bg-transparent border border-white/30 rounded-lg px-3 py-2 text-sm placeholder-white/40"
-            placeholder="Enter a secure password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-          />
-          <p className="text-[10px] text-white/60 mt-1">
-            This password encrypts all your data in Pantry. Keep it safe!
-          </p>
-        </div>
 
         {mode === "signup" && (
           <>
@@ -246,7 +205,7 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
 
       <button
         disabled={
-          loading || !pantryId || !bucket || !password || (mode === "signup" && (!supabaseUrl || !supabaseAnonKey || !openrouterKey))
+          loading || !pantryId || !bucket || (mode === "signup" && (!supabaseUrl || !supabaseAnonKey || !openrouterKey))
         }
         className="w-full mt-4 px-4 py-2 rounded-lg bg-white text-black text-sm disabled:opacity-50 disabled:cursor-not-allowed hover:bg-white/90 transition"
         onClick={mode === "signup" ? handleSignup : handleLogin}

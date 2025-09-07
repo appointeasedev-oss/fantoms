@@ -50,14 +50,25 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
       }
 
       try {
-        // For background theme loading, we'll use default theme
-        // since we don't have access to the user's password here
-        // Theme changes will be handled through the settings component
-        setThemeColors(DEFAULT_COLORS)
-        setBgColor(DEFAULT_BG)
+        const res = await fetch("/api/pantry/fetch", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ pantryId, bucket }),
+        })
 
-        // TODO: Implement theme persistence through localStorage or context
-        // that doesn't require password re-entry
+        if (res.ok) {
+          const data = await res.json()
+          const colorThemeId = data.data?.colorTheme || "default"
+          
+          // Get theme from predefined themes
+          const theme = getThemeById(colorThemeId)
+          setThemeColors(theme.colors)
+          setBgColor(theme.backgroundColor)
+        } else {
+          // Fallback to default
+          setThemeColors(DEFAULT_COLORS)
+          setBgColor(DEFAULT_BG)
+        }
       } catch (err) {
         console.warn("Failed to fetch theme from Pantry, using default:", err)
         setThemeColors(DEFAULT_COLORS)
