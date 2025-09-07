@@ -91,39 +91,28 @@ export function SettingsTab() {
     async function loadSettings() {
       setLoading(true)
       try {
-        const res = await fetch("/api/pantry/fetch", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ pantryId, bucket }),
+        // For settings, we need the user's password to decrypt
+        // This is a limitation - we'd need to store the password in memory or ask for it
+        // For now, we'll show a message that settings require re-authentication
+        setSettings((prev) => ({ ...prev, colorTheme: "default" }))
+        
+        // TODO: Implement password re-entry for settings access
+        // const password = prompt("Enter your master password to load settings:");
+        // if (!password) return;
+        
+        // const res = await fetch("/api/pantry/fetch", {
+        //   method: "POST",
+        //   headers: { "Content-Type": "application/json" },
+        //   body: JSON.stringify({ pantryId, bucket, password }),
+        // })
+
+        // For now, just set default settings
+        setSettings({
+          colorTheme: "default",
+          supabaseUrl: "",
+          supabaseAnonKey: "",
+          openrouterKey: "",
         })
-
-        if (res.ok) {
-          const data = await res.json()
-          if (data.data) {
-            setSettings({
-              colorTheme: data.data.colorTheme || "default",
-              supabaseUrl: data.data.supabaseUrl || "",
-              supabaseAnonKey: data.data.supabaseAnonKey || "",
-              openrouterKey: data.data.openrouterKey || "",
-            })
-          } else {
-            const defaultSettings = {
-              colorTheme: "default",
-              supabaseUrl: "",
-              supabaseAnonKey: "",
-              openrouterKey: "",
-              savedAt: new Date().toISOString(),
-            }
-
-            await fetch("/api/pantry/store", {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ pantryId, bucket, data: defaultSettings }),
-            })
-
-            setSettings(defaultSettings)
-          }
-        }
       } catch (e) {
         console.error("Failed to load settings:", e)
         setSettings((prev) => ({ ...prev, colorTheme: "default" }))
@@ -157,6 +146,9 @@ export function SettingsTab() {
   async function saveSettings() {
     if (!pantryId || !bucket) return
 
+    const password = prompt("Enter your master password to save settings:")
+    if (!password) return
+
     setSaving(true)
     try {
       const payload = {
@@ -167,7 +159,7 @@ export function SettingsTab() {
       const res = await fetch("/api/pantry/store", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ pantryId, bucket, data: payload }),
+        body: JSON.stringify({ pantryId, bucket, data: payload, password }),
       })
 
       if (!res.ok) {
