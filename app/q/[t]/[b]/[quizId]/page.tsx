@@ -7,6 +7,7 @@ import { b64urlDecode, tenantKeyFrom, stripPrefix, isPrefixedEncoded } from "@/l
 import { sbFetch, type SupaEnv } from "@/lib/supabase-rest"
 import { ShaderBackground } from "@/components/shader-background"
 import { LoaderScreen } from "@/components/loader-screen"
+import { SecureQuizWrapper } from "@/components/secure-quiz-wrapper"
 
 function shuffle<T>(arr: T[]) {
   const a = [...arr]
@@ -155,124 +156,126 @@ export default function QuizTakePage() {
 
   return (
     <ShaderBackground>
-      <div className="min-h-screen w-full relative flex items-center justify-center p-4">
-        {showLoader && <LoaderScreen />}
-        
-        {!showLoader && (
-          <main className="w-full max-w-2xl text-white">
-            {!env ? (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <div className="text-center">
-                  <h1 className="text-xl font-medium mb-2">Loading Quiz...</h1>
-                  <p className="text-sm text-white/70">Connecting to quiz platform</p>
-                </div>
-              </section>
-            ) : !quiz ? (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <div className="text-center">
-                  <h1 className="text-xl font-medium mb-2">Quiz Not Found</h1>
-                  <p className="text-sm text-white/70">The quiz you're looking for doesn't exist or has been removed.</p>
-                </div>
-              </section>
-            ) : !user ? (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <h1 className="text-2xl font-medium mb-2">{quiz.title}</h1>
-                <p className="text-white/80 mb-6">{quiz.description}</p>
-                <LoginForm onLogin={login} />
-              </section>
-            ) : !attemptId ? (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <div className="text-center">
-                  <h1 className="text-2xl font-medium mb-4">{quiz.title}</h1>
-                  <p className="text-white/80 mb-6">{quiz.description}</p>
-                  <p className="text-sm text-white/70 mb-6">Welcome, {user.name}!</p>
-                  <button 
-                    className="px-6 py-3 rounded-lg bg-white text-black font-medium hover:bg-white/90 transition-all duration-200" 
-                    onClick={startAttempt}
-                  >
-                    Start Quiz
-                  </button>
-                </div>
-              </section>
-            ) : !qna?.length ? (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <div className="text-center">
-                  <h1 className="text-xl font-medium mb-2">No Questions Available</h1>
-                  <p className="text-sm text-white/70">This quiz doesn't have any questions yet.</p>
-                </div>
-              </section>
-            ) : done ? (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <div className="text-center mb-6">
-                  <h1 className="text-2xl font-medium mb-2">Quiz Complete!</h1>
-                  <div className="text-3xl font-bold text-cyan-400 mb-2">{score}/{qna?.length}</div>
-                  <p className="text-white/80">
-                    You scored {Math.round(((score || 0) / (qna?.length || 1)) * 100)}%
-                  </p>
-                </div>
-                
-                <div className="space-y-4">
-                  <h3 className="text-lg font-medium">Review Answers:</h3>
-                  {qna?.map((q: any, idx: number) => {
-                    const correct = q.options.find((o: any) => o.is_correct)
-                    const selected = q.options.find((o: any) => o.id === answers[q.id])
-                    const isCorrect = answers[q.id] === correct?.id
-                    return (
-                      <div key={q.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
-                        <div className="font-medium mb-2">
-                          Q{idx + 1}. {q.prompt}
-                        </div>
-                        {selected && (
-                          <div className={`text-sm mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
-                            {isCorrect ? '✓' : '✗'} Your Answer: {selected.option_text}
-                          </div>
-                        )}
-                        <div className="text-sm text-green-400 mb-2">
-                          ✓ Correct Answer: {correct?.option_text}
-                        </div>
-                        {q.solution_video_url && (
-                          <div className="mb-2">
-                            <a
-                              className="inline-flex items-center gap-2 px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors text-sm"
-                              href={q.solution_video_url}
-                              target="_blank"
-                              rel="noreferrer"
-                            >
-                              📹 Watch Explanation
-                            </a>
-                          </div>
-                        )}
-                        {q.solution_text && (
-                          <div
-                            className="text-sm text-white/80 prose prose-invert max-w-none"
-                            dangerouslySetInnerHTML={{ __html: sanitizeHtml(q.solution_text) }}
-                          />
-                        )}
-                      </div>
-                    )
-                  })}
-                </div>
-              </section>
-            ) : (
-              <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
-                <div className="mb-6">
+      <SecureQuizWrapper>
+        <div className="min-h-screen w-full relative flex items-center justify-center p-4">
+          {showLoader && <LoaderScreen />}
+          
+          {!showLoader && (
+            <main className="w-full max-w-2xl text-white">
+              {!env ? (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                  <div className="text-center">
+                    <h1 className="text-xl font-medium mb-2">Loading Quiz...</h1>
+                    <p className="text-sm text-white/70">Connecting to quiz platform</p>
+                  </div>
+                </section>
+              ) : !quiz ? (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                  <div className="text-center">
+                    <h1 className="text-xl font-medium mb-2">Quiz Not Found</h1>
+                    <p className="text-sm text-white/70">The quiz you're looking for doesn't exist or has been removed.</p>
+                  </div>
+                </section>
+              ) : !user ? (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <h1 className="text-2xl font-medium mb-2">{quiz.title}</h1>
-                  <p className="text-white/80">{quiz.description}</p>
-                </div>
-                <QuizTaking 
-                  qna={qna} 
-                  currentQuestionIndex={currentQuestionIndex}
-                  answers={answers}
-                  onSelectAnswer={selectAnswer}
-                  onNext={nextQuestion}
-                  onPrevious={previousQuestion}
-                  onSubmit={submitQuiz}
-                />
-              </section>
-            )}
-          </main>
-        )}
-      </div>
+                  <p className="text-white/80 mb-6">{quiz.description}</p>
+                  <LoginForm onLogin={login} />
+                </section>
+              ) : !attemptId ? (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                  <div className="text-center">
+                    <h1 className="text-2xl font-medium mb-4">{quiz.title}</h1>
+                    <p className="text-white/80 mb-6">{quiz.description}</p>
+                    <p className="text-sm text-white/70 mb-6">Welcome, {user.name}!</p>
+                    <button 
+                      className="px-6 py-3 rounded-lg bg-white text-black font-medium hover:bg-white/90 transition-all duration-200" 
+                      onClick={startAttempt}
+                    >
+                      Start Quiz
+                    </button>
+                  </div>
+                </section>
+              ) : !qna?.length ? (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                  <div className="text-center">
+                    <h1 className="text-xl font-medium mb-2">No Questions Available</h1>
+                    <p className="text-sm text-white/70">This quiz doesn't have any questions yet.</p>
+                  </div>
+                </section>
+              ) : done ? (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                  <div className="text-center mb-6">
+                    <h1 className="text-2xl font-medium mb-2">Quiz Complete!</h1>
+                    <div className="text-3xl font-bold text-cyan-400 mb-2">{score}/{qna?.length}</div>
+                    <p className="text-white/80">
+                      You scored {Math.round(((score || 0) / (qna?.length || 1)) * 100)}%
+                    </p>
+                  </div>
+                  
+                  <div className="space-y-4">
+                    <h3 className="text-lg font-medium">Review Answers:</h3>
+                    {qna?.map((q: any, idx: number) => {
+                      const correct = q.options.find((o: any) => o.is_correct)
+                      const selected = q.options.find((o: any) => o.id === answers[q.id])
+                      const isCorrect = answers[q.id] === correct?.id
+                      return (
+                        <div key={q.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                          <div className="font-medium mb-2">
+                            Q{idx + 1}. {q.prompt}
+                          </div>
+                          {selected && (
+                            <div className={`text-sm mb-2 ${isCorrect ? 'text-green-400' : 'text-red-400'}`}>
+                              {isCorrect ? '✓' : '✗'} Your Answer: {selected.option_text}
+                            </div>
+                          )}
+                          <div className="text-sm text-green-400 mb-2">
+                            ✓ Correct Answer: {correct?.option_text}
+                          </div>
+                          {q.solution_video_url && (
+                            <div className="mb-2">
+                              <a
+                                className="inline-flex items-center gap-2 px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors text-sm"
+                                href={q.solution_video_url}
+                                target="_blank"
+                                rel="noreferrer"
+                              >
+                                📹 Watch Explanation
+                              </a>
+                            </div>
+                          )}
+                          {q.solution_text && (
+                            <div
+                              className="text-sm text-white/80 prose prose-invert max-w-none"
+                              dangerouslySetInnerHTML={{ __html: sanitizeHtml(q.solution_text) }}
+                            />
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </section>
+              ) : (
+                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                  <div className="mb-6">
+                    <h1 className="text-2xl font-medium mb-2">{quiz.title}</h1>
+                    <p className="text-white/80">{quiz.description}</p>
+                  </div>
+                  <QuizTaking 
+                    qna={qna} 
+                    currentQuestionIndex={currentQuestionIndex}
+                    answers={answers}
+                    onSelectAnswer={selectAnswer}
+                    onNext={nextQuestion}
+                    onPrevious={previousQuestion}
+                    onSubmit={submitQuiz}
+                  />
+                </section>
+              )}
+            </main>
+          )}
+        </div>
+      </SecureQuizWrapper>
     </ShaderBackground>
   )
 }
