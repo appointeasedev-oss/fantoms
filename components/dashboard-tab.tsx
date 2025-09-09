@@ -23,9 +23,9 @@ export function DashboardTab() {
   })
 
   return (
-    <div className="p-4 text-white space-y-4">
+    <div className="p-3 md:p-4 space-y-4 w-full">
       <h2 className="text-xl font-semibold">Dashboard</h2>
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
         <Stat label="Pantry" value={pantryError ? "Error" : pantryId && bucket ? "OK" : "Not set"} />
         <Stat label="Supabase" value={supabaseUrl && supabaseAnonKey ? "OK" : "Not set"} />
         <Stat label="Quizzes" value={isLoading ? "-" : (data?.totalQuizzes ?? 0)} />
@@ -41,9 +41,9 @@ export function DashboardTab() {
 
 function Stat({ label, value }: { label: string; value: number | string }) {
   return (
-    <div className="p-3 rounded-md bg-white/5 border border-white/10">
-      <div className="text-xs opacity-80">{label}</div>
-      <div className="text-lg font-semibold">{value}</div>
+    <div className="p-2 sm:p-3 rounded-md bg-white/5 border border-white/10">
+      <div className="text-xs opacity-80 truncate">{label}</div>
+      <div className="text-sm sm:text-lg font-semibold truncate">{value}</div>
     </div>
   )
 }

@@ -74,11 +74,15 @@ export function SettingsTab() {
     supabaseUrl: string
     supabaseAnonKey: string
     openrouterKey: string
+    textColor: string
+    backgroundImageUrl: string
   }>({
     colorTheme: "default",
     supabaseUrl: "",
     supabaseAnonKey: "",
     openrouterKey: "",
+    textColor: "#ffffff",
+    backgroundImageUrl: "",
   })
   const [loading, setLoading] = React.useState(false)
   const [saving, setSaving] = React.useState(false)
@@ -105,6 +109,8 @@ export function SettingsTab() {
               supabaseUrl: data.data.supabaseUrl || "",
               supabaseAnonKey: data.data.supabaseAnonKey || "",
               openrouterKey: data.data.openrouterKey || "",
+              textColor: data.data.textColor || "#ffffff",
+              backgroundImageUrl: data.data.backgroundImageUrl || "",
             })
           } else {
             const defaultSettings = {
@@ -112,6 +118,8 @@ export function SettingsTab() {
               supabaseUrl: "",
               supabaseAnonKey: "",
               openrouterKey: "",
+              textColor: "#ffffff",
+              backgroundImageUrl: "",
               savedAt: new Date().toISOString(),
             }
 
@@ -126,7 +134,7 @@ export function SettingsTab() {
         }
       } catch (e) {
         console.error("Failed to load settings:", e)
-        setSettings((prev) => ({ ...prev, colorTheme: "default" }))
+        setSettings((prev) => ({ ...prev, colorTheme: "default", textColor: "#ffffff", backgroundImageUrl: "" }))
       } finally {
         setLoading(false)
       }
@@ -135,7 +143,7 @@ export function SettingsTab() {
     loadSettings()
   }, [pantryId, bucket])
 
-  // Apply theme to background and store in localStorage for quiz pages
+  // Apply theme, text color, and background image
   React.useEffect(() => {
     const theme = COLOR_THEMES.find((t) => t.id === settings.colorTheme) || COLOR_THEMES[0]
 
@@ -144,15 +152,32 @@ export function SettingsTab() {
     root.style.setProperty("--shader-bg", theme.backgroundColor)
     root.style.setProperty("--theme-primary", theme.colors[1])
     root.style.setProperty("--theme-accent", theme.colors[3])
+    root.style.setProperty("--app-text-color", settings.textColor)
+    
+    // Apply background image if provided
+    if (settings.backgroundImageUrl.trim()) {
+      root.style.setProperty("--app-bg-image", `url(${settings.backgroundImageUrl})`)
+    } else {
+      root.style.removeProperty("--app-bg-image")
+    }
 
-    localStorage.setItem("fantoms-theme", JSON.stringify(theme))
+    localStorage.setItem("fantoms-theme", JSON.stringify({ 
+      ...theme, 
+      textColor: settings.textColor,
+      backgroundImageUrl: settings.backgroundImageUrl 
+    }))
 
     window.dispatchEvent(
       new CustomEvent("themeChange", {
-        detail: { colors: theme.colors, backgroundColor: theme.backgroundColor },
+        detail: { 
+          colors: theme.colors, 
+          backgroundColor: theme.backgroundColor,
+          textColor: settings.textColor,
+          backgroundImageUrl: settings.backgroundImageUrl
+        },
       }),
     )
-  }, [settings.colorTheme])
+  }, [settings.colorTheme, settings.textColor, settings.backgroundImageUrl])
 
   async function saveSettings() {
     if (!pantryId || !bucket) return
@@ -188,7 +213,7 @@ export function SettingsTab() {
 
   if (loading) {
     return (
-      <div className="p-4 text-white">
+      <div className="p-3 md:p-4" style={{ color: settings.textColor }}>
         <h2 className="text-xl font-semibold mb-4">Settings</h2>
         <div className="opacity-80">Loading settings...</div>
       </div>
@@ -196,11 +221,11 @@ export function SettingsTab() {
   }
 
   return (
-    <div className="p-4 text-white space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="p-3 md:p-4 space-y-6 w-full" style={{ color: settings.textColor }}>
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h2 className="text-xl font-semibold">Settings</h2>
         <button
-          className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium disabled:opacity-50"
+          className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium disabled:opacity-50 w-full sm:w-auto"
           onClick={saveSettings}
           disabled={saving}
         >
@@ -211,7 +236,7 @@ export function SettingsTab() {
       {/* Color Theme Section */}
       <section className="p-4 rounded-lg bg-white/5 border border-white/10">
         <h3 className="text-lg font-medium mb-4">Color Theme</h3>
-        <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
           {COLOR_THEMES.map((theme) => (
             <button
               key={theme.id}
@@ -242,6 +267,47 @@ export function SettingsTab() {
         </div>
       </section>
 
+      {/* Text Color and Background Image Section */}
+      <section className="p-4 rounded-lg bg-white/5 border border-white/10">
+        <h3 className="text-lg font-medium mb-4">Appearance Customization</h3>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm opacity-90 mb-2">Text Color</label>
+            <div className="flex items-center gap-3">
+              <input
+                type="color"
+                className="w-12 h-10 rounded border border-white/20 bg-transparent cursor-pointer"
+                value={settings.textColor}
+                onChange={(e) => updateSetting("textColor", e.target.value)}
+              />
+              <input
+                className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 placeholder-white/40"
+                style={{ color: settings.textColor }}
+                value={settings.textColor}
+                onChange={(e) => updateSetting("textColor", e.target.value)}
+                placeholder="#ffffff"
+                autoComplete="off"
+              />
+            </div>
+          </div>
+          
+          <div>
+            <label className="block text-sm opacity-90 mb-2">Background Image URL (optional)</label>
+            <input
+              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 placeholder-white/40"
+              style={{ color: settings.textColor }}
+              value={settings.backgroundImageUrl}
+              onChange={(e) => updateSetting("backgroundImageUrl", e.target.value)}
+              placeholder="https://example.com/image.jpg"
+              autoComplete="off"
+            />
+            <p className="text-xs opacity-70 mt-1">
+              Leave empty to use shader background. Image will overlay the shader background.
+            </p>
+          </div>
+        </div>
+      </section>
+
       {/* Supabase Configuration */}
       <section className="p-4 rounded-lg bg-white/5 border border-white/10">
         <div className="flex items-center justify-between mb-4">
@@ -255,7 +321,8 @@ export function SettingsTab() {
           <div>
             <label className="block text-sm opacity-90 mb-1">Supabase URL</label>
             <input
-              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white placeholder-white/40"
+              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 placeholder-white/40"
+              style={{ color: settings.textColor }}
               value={settings.supabaseUrl}
               onChange={(e) => updateSetting("supabaseUrl", e.target.value)}
               placeholder="https://your-project.supabase.co"
@@ -267,7 +334,8 @@ export function SettingsTab() {
           <div>
             <label className="block text-sm opacity-90 mb-1">Supabase Anon Key</label>
             <input
-              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white placeholder-white/40"
+              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 placeholder-white/40"
+              style={{ color: settings.textColor }}
               value={settings.supabaseAnonKey}
               onChange={(e) => updateSetting("supabaseAnonKey", e.target.value)}
               placeholder="eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
@@ -279,7 +347,8 @@ export function SettingsTab() {
           <div>
             <label className="block text-sm opacity-90 mb-1">OpenRouter API Key</label>
             <input
-              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 text-white placeholder-white/40"
+              className="w-full bg-white/10 border border-white/20 rounded px-3 py-2 placeholder-white/40"
+              style={{ color: settings.textColor }}
               value={settings.openrouterKey}
               onChange={(e) => updateSetting("openrouterKey", e.target.value)}
               placeholder="sk-or-v1-..."

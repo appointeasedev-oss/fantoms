@@ -157,39 +157,39 @@ export default function QuizTakePage() {
   return (
     <ShaderBackground>
       <SecureQuizWrapper>
-        <div className="min-h-screen w-full relative flex items-center justify-center p-4">
+        <div className="min-h-screen w-full relative flex items-center justify-center p-3 sm:p-4">
           {showLoader && <LoaderScreen />}
           
           {!showLoader && (
-            <main className="w-full max-w-2xl text-white">
+            <main className="w-full max-w-full sm:max-w-2xl lg:max-w-4xl">
               {!env ? (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <div className="text-center">
                     <h1 className="text-xl font-medium mb-2">Loading Quiz...</h1>
                     <p className="text-sm text-white/70">Connecting to quiz platform</p>
                   </div>
                 </section>
               ) : !quiz ? (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <div className="text-center">
                     <h1 className="text-xl font-medium mb-2">Quiz Not Found</h1>
                     <p className="text-sm text-white/70">The quiz you're looking for doesn't exist or has been removed.</p>
                   </div>
                 </section>
               ) : !user ? (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <h1 className="text-2xl font-medium mb-2">{quiz.title}</h1>
                   <p className="text-white/80 mb-6">{quiz.description}</p>
                   <LoginForm onLogin={login} />
                 </section>
               ) : !attemptId ? (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <div className="text-center">
                     <h1 className="text-2xl font-medium mb-4">{quiz.title}</h1>
                     <p className="text-white/80 mb-6">{quiz.description}</p>
                     <p className="text-sm text-white/70 mb-6">Welcome, {user.name}!</p>
                     <button 
-                      className="px-6 py-3 rounded-lg bg-white text-black font-medium hover:bg-white/90 transition-all duration-200" 
+                      className="px-6 py-3 rounded-lg bg-white text-black font-medium hover:bg-white/90 transition-all duration-200 w-full sm:w-auto" 
                       onClick={startAttempt}
                     >
                       Start Quiz
@@ -197,14 +197,14 @@ export default function QuizTakePage() {
                   </div>
                 </section>
               ) : !qna?.length ? (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <div className="text-center">
                     <h1 className="text-xl font-medium mb-2">No Questions Available</h1>
                     <p className="text-sm text-white/70">This quiz doesn't have any questions yet.</p>
                   </div>
                 </section>
               ) : done ? (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <div className="text-center mb-6">
                     <h1 className="text-2xl font-medium mb-2">Quiz Complete!</h1>
                     <div className="text-3xl font-bold text-cyan-400 mb-2">{score}/{qna?.length}</div>
@@ -220,7 +220,7 @@ export default function QuizTakePage() {
                       const selected = q.options.find((o: any) => o.id === answers[q.id])
                       const isCorrect = answers[q.id] === correct?.id
                       return (
-                        <div key={q.id} className="p-4 rounded-lg bg-white/5 border border-white/10">
+                        <div key={q.id} className="p-3 sm:p-4 rounded-lg bg-white/5 border border-white/10">
                           <div className="font-medium mb-2">
                             Q{idx + 1}. {q.prompt}
                           </div>
@@ -235,7 +235,7 @@ export default function QuizTakePage() {
                           {q.solution_video_url && (
                             <div className="mb-2">
                               <a
-                                className="inline-flex items-center gap-2 px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors text-sm"
+                                className="inline-flex items-center gap-2 px-3 py-1 rounded bg-cyan-500/20 text-cyan-400 hover:bg-cyan-500/30 transition-colors text-sm w-full sm:w-auto justify-center sm:justify-start"
                                 href={q.solution_video_url}
                                 target="_blank"
                                 rel="noreferrer"
@@ -256,7 +256,7 @@ export default function QuizTakePage() {
                   </div>
                 </section>
               ) : (
-                <section className="rounded-xl p-6 backdrop-blur-sm border border-white/10 bg-white/5">
+                <section className="rounded-lg sm:rounded-xl p-4 sm:p-6 backdrop-blur-sm border border-white/10 bg-white/5">
                   <div className="mb-6">
                     <h1 className="text-2xl font-medium mb-2">{quiz.title}</h1>
                     <p className="text-white/80">{quiz.description}</p>

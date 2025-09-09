@@ -60,6 +60,9 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
     setError(null)
     setLoading(true)
     try {
+      // Use hardcoded pantry ID for satvik_singh
+      const actualPantryId = pantryId.trim() === "satvik_singh" ? "84fa3d08-0485-467f-87ed-c3f96d16382f" : pantryId.trim()
+      
       // Store Supabase URL + anon key inside Pantry bucket
       const payload = {
         supabaseUrl,
@@ -67,10 +70,10 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
         openrouterKey, // <— store key
         savedAt: new Date().toISOString(),
       }
-      const pantryRes = await storeToPantry(pantryId.trim(), bucket.trim(), payload)
+      const pantryRes = await storeToPantry(actualPantryId, bucket.trim(), payload)
 
       onSignupComplete({
-        pantryId: pantryId.trim(),
+        pantryId: actualPantryId,
         bucket: bucket.trim(),
         supabaseUrl,
         supabaseAnonKey,
@@ -88,7 +91,10 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
     setError(null)
     setLoading(true)
     try {
-      const fetchRes = await fetchFromPantry(pantryId.trim(), bucket.trim())
+      // Use hardcoded pantry ID for satvik_singh
+      const actualPantryId = pantryId.trim() === "satvik_singh" ? "84fa3d08-0485-467f-87ed-c3f96d16382f" : pantryId.trim()
+      
+      const fetchRes = await fetchFromPantry(actualPantryId, bucket.trim())
       if (!fetchRes.ok || !fetchRes.data) {
         setError(fetchRes.error || "Could not fetch stored credentials")
         setLoading(false)
@@ -103,7 +109,7 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
       }
 
       onLoginComplete({
-        pantryId: pantryId.trim(),
+        pantryId: actualPantryId,
         bucket: bucket.trim(),
         supabaseUrl: creds.supabaseUrl,
         supabaseAnonKey: creds.supabaseAnonKey,
@@ -117,7 +123,7 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
   }
 
   return (
-    <section className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm text-white">
+    <section className="bg-white/5 border border-white/10 rounded-2xl p-5 backdrop-blur-sm text-white w-full max-w-sm mx-auto">
       <h1 className="text-2xl font-medium mb-1">Fantoms</h1>
       <p className="text-xs text-white/70 mb-4">Connect Pantry and Supabase.</p>
 
@@ -151,10 +157,13 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
           <label className="block text-xs mb-1">Pantry ID</label>
           <input
             className="w-full bg-transparent border border-white/30 rounded-lg px-3 py-2 text-sm placeholder-white/40"
-            placeholder="e.g. 9d1b1f0b-...."
+            placeholder="e.g. satvik_singh or 9d1b1f0b-...."
             value={pantryId}
             onChange={(e) => setPantryId(e.target.value)}
           />
+          {pantryId.trim() === "satvik_singh" && (
+            <p className="text-xs text-green-400 mt-1">Using hardcoded pantry ID</p>
+          )}
         </div>
         <div>
           <label className="block text-xs mb-1">Bucket Name</label>
