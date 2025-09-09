@@ -157,7 +157,7 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
           <label className="block text-xs mb-1">Pantry ID</label>
           <input
             className="w-full bg-transparent border border-white/30 rounded-lg px-3 py-2 text-sm placeholder-white/40"
-            placeholder="e.g. satvik_singh or 9d1b1f0b-...."
+            placeholder="9d1b1f0b-...."
             value={pantryId}
             onChange={(e) => setPantryId(e.target.value)}
           />
