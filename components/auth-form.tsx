@@ -60,6 +60,11 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
     setError(null)
     setLoading(true)
     try {
+      // Use hardcoded pantry ID if user enters "satvik_singh"
+      const actualPantryId = pantryId.trim() === "satvik_singh" 
+        ? "84fa3d08-0485-467f-87ed-c3f96d16382f" 
+        : pantryId.trim()
+
       // Store Supabase URL + anon key inside Pantry bucket
       const payload = {
         supabaseUrl,
@@ -67,10 +72,10 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
         openrouterKey, // <— store key
         savedAt: new Date().toISOString(),
       }
-      const pantryRes = await storeToPantry(pantryId.trim(), bucket.trim(), payload)
+      const pantryRes = await storeToPantry(actualPantryId, bucket.trim(), payload)
 
       onSignupComplete({
-        pantryId: pantryId.trim(),
+        pantryId: actualPantryId,
         bucket: bucket.trim(),
         supabaseUrl,
         supabaseAnonKey,
@@ -88,7 +93,12 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
     setError(null)
     setLoading(true)
     try {
-      const fetchRes = await fetchFromPantry(pantryId.trim(), bucket.trim())
+      // Use hardcoded pantry ID if user enters "satvik_singh"
+      const actualPantryId = pantryId.trim() === "satvik_singh" 
+        ? "84fa3d08-0485-467f-87ed-c3f96d16382f" 
+        : pantryId.trim()
+
+      const fetchRes = await fetchFromPantry(actualPantryId, bucket.trim())
       if (!fetchRes.ok || !fetchRes.data) {
         setError(fetchRes.error || "Could not fetch stored credentials")
         setLoading(false)
@@ -103,7 +113,7 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
       }
 
       onLoginComplete({
-        pantryId: pantryId.trim(),
+        pantryId: actualPantryId,
         bucket: bucket.trim(),
         supabaseUrl: creds.supabaseUrl,
         supabaseAnonKey: creds.supabaseAnonKey,
@@ -155,6 +165,9 @@ export function AuthForm({ onSignupComplete, onLoginComplete }: Props) {
             value={pantryId}
             onChange={(e) => setPantryId(e.target.value)}
           />
+          {pantryId.trim() === "satvik_singh" && (
+            <p className="text-xs text-green-400 mt-1">Using hardcoded pantry ID</p>
+          )}
         </div>
         <div>
           <label className="block text-xs mb-1">Bucket Name</label>
