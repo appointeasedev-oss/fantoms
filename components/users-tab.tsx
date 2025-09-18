@@ -120,22 +120,22 @@ export function UsersTab() {
   if (!env) return <div className="opacity-80">Connect Pantry and Supabase first.</div>
 
   return (
-    <div className="p-3 md:p-4 space-y-4 w-full">
+    <div className="p-4 text-white space-y-4">
       <h2 className="text-xl font-semibold">Users</h2>
 
       {lastCreated ? (
-        <div className="p-3 rounded-md bg-white/10 border border-white/20 text-sm break-all">
+        <div className="p-3 rounded-md bg-white/10 border border-white/20 text-sm">
           User created — ID: <span className="font-mono">{lastCreated.user_id}</span>, Password:{" "}
           <span className="font-mono">{lastCreated.password}</span>
         </div>
       ) : null}
 
       <div className="p-3 rounded-md bg-white/5 border border-white/10">
-        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid gap-2 md:grid-cols-3">
           <div className="grid gap-1">
             <label className="text-sm opacity-90">Name</label>
             <input
-              className="bg-white/10 border border-white/20 rounded px-3 py-2"
+              className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
               value={name}
               onChange={(e) => setName(e.target.value)}
               autoComplete="off"
@@ -147,14 +147,14 @@ export function UsersTab() {
             <label className="text-sm opacity-90">Password</label>
             <input
               type="password"
-              className="bg-white/10 border border-white/20 rounded px-3 py-2"
+              className="bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
               value={password}
               onChange={(e) => setPassword(e.target.value)}
               autoComplete="off"
             />
           </div>
-          <div className="flex items-end sm:col-span-2 lg:col-span-1">
-            <button className="px-3 py-2 rounded bg-cyan-500 text-black text-sm w-full lg:w-auto" onClick={addUser}>
+          <div className="flex items-end">
+            <button className="px-3 py-2 rounded bg-cyan-500 text-black text-sm" onClick={addUser}>
               Add user
             </button>
           </div>

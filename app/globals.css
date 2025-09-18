@@ -133,58 +133,9 @@
     @apply bg-background text-foreground;
     /* Set Figtree as the default font family for the entire website */
     font-family: var(--font-figtree);
-    color: var(--app-text-color, #ffffff);
-  }
-  
-  /* Mobile responsive containers */
-  @media (max-width: 640px) {
-    .bg-white\/5 {
-      @apply bg-white/10;
-    }
-    
-    .backdrop-blur-sm {
-      @apply backdrop-blur-md;
-    }
-    
-    .border-white\/10 {
-      @apply border-white/20;
-    }
   }
 }
 
 .instrument {
   font-family: var(--font-instrument-serif);
-}
-
-/* Global text color override */
-* {
-  color: inherit;
-}
-
-/* Ensure inputs and textareas inherit text color */
-input, textarea, select {
-  color: var(--app-text-color, #ffffff) !important;
-}
-
-/* Mobile responsive utilities */
-@media (max-width: 640px) {
-  .container {
-    @apply px-4;
-  }
-  
-  .rounded-xl {
-    @apply rounded-lg;
-  }
-  
-  .p-8 {
-    @apply p-4;
-  }
-  
-  .p-6 {
-    @apply p-4;
-  }
-  
-  .p-5 {
-    @apply p-4;
-  }
 }

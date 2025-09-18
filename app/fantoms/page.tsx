@@ -40,7 +40,7 @@ export default function FantomsPage() {
     <main className="relative min-h-screen">
       <FantomsProvider pantryId={pantryId} bucket={bucket} supabaseUrl={env?.supabaseUrl} supabaseAnonKey={env?.supabaseAnonKey}>
         <ShaderBackground>
-          <div className="relative z-10 container mx-auto max-w-full sm:max-w-2xl lg:max-w-4xl px-3 sm:px-4 py-4 sm:py-8 text-white w-full">
+          <div className="relative z-10 container mx-auto max-w-2xl px-4 py-8 text-white">
             {step === "loader" && <LoaderScreen onDone={() => setStep("auth")} />}
 
             {step === "auth" && (
@@ -86,27 +86,27 @@ export default function FantomsPage() {
 
             {step === "main" && env && (
               <div className="space-y-6">
-                <div className="flex flex-wrap gap-2 sm:gap-3">
+                <div className="flex gap-3">
                   <button
-                    className={`px-3 py-2 rounded text-sm ${tab === "dashboard" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    className={`px-3 py-1 rounded ${tab === "dashboard" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                     onClick={() => setTab("dashboard")}
                   >
                     Dashboard
                   </button>
                   <button
-                    className={`px-3 py-2 rounded text-sm ${tab === "quizzes" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    className={`px-3 py-1 rounded ${tab === "quizzes" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                     onClick={() => setTab("quizzes")}
                   >
                     Quizzes
                   </button>
                   <button
-                    className={`px-3 py-2 rounded text-sm ${tab === "users" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    className={`px-3 py-1 rounded ${tab === "users" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                     onClick={() => setTab("users")}
                   >
                     Users
                   </button>
                   <button
-                    className={`px-3 py-2 rounded text-sm ${tab === "settings" ? "bg-white text-black" : "bg-white/10 text-white"}`}
+                    className={`px-3 py-1 rounded ${tab === "settings" ? "bg-white text-black" : "bg-white/10 text-white"}`}
                     onClick={() => setTab("settings")}
                   >
                     Settings

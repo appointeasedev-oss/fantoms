@@ -491,26 +491,26 @@ export function QuizzesTab() {
   }
 
   function QuizBuilder() {
-    const updateDraft = (updater: (prev: QuizDraft) => QuizDraft) => {
-      setDraft(prev => updater(prev))
-    }
+    const updateDraft = React.useCallback((updater: (prev: QuizDraft) => QuizDraft) => {
+      setDraft(updater)
+    }, [])
 
-    const updateQuestion = (questionId: string, updater: (prev: QuestionDraft) => QuestionDraft) => {
+    const updateQuestion = React.useCallback((questionId: string, updater: (prev: QuestionDraft) => QuestionDraft) => {
       updateDraft(draft => ({
         ...draft,
         questions: draft.questions.map(q => q.id === questionId ? updater(q) : q)
       }))
-    }
+    }, [updateDraft])
 
-    const updateOption = (questionId: string, optionId: string, updater: (prev: OptionDraft) => OptionDraft) => {
+    const updateOption = React.useCallback((questionId: string, optionId: string, updater: (prev: OptionDraft) => OptionDraft) => {
       updateQuestion(questionId, question => ({
         ...question,
         options: question.options.map(o => o.id === optionId ? updater(o) : o)
       }))
-    }
+    }, [updateQuestion])
 
     return (
-      <div className="space-y-4 w-full">
+      <div className="space-y-4">
         <div className="grid gap-2">
           <label className="text-sm opacity-90">Quiz title</label>
           <input
@@ -541,12 +541,12 @@ export function QuizzesTab() {
         <div className="space-y-4">
           <h3 className="text-lg font-medium">Questions</h3>
           {draft.questions.map((q, idx) => (
-            <div key={q.id} className="p-3 md:p-4 rounded-md bg-white/5 border border-white/10">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-3 gap-2">
+            <div key={q.id} className="p-4 rounded-md bg-white/5 border border-white/10">
+              <div className="flex items-center justify-between mb-3">
                 <div className="font-semibold">Question {idx + 1}</div>
                 {draft.questions.length > 1 && (
                   <button
-                    className="text-xs opacity-80 hover:opacity-100 px-2 py-1 rounded bg-red-500/20 text-red-300 self-start sm:self-auto"
+                    className="text-xs opacity-80 hover:opacity-100 px-2 py-1 rounded bg-red-500/20 text-red-300"
                     onClick={() => updateDraft(d => ({ ...d, questions: d.questions.filter(x => x.id !== q.id) }))}
                   >
                     Remove Question
@@ -582,7 +582,7 @@ export function QuizzesTab() {
                     autoCapitalize="off"
                   />
                   <button
-                    className="self-start px-3 py-1 rounded bg-white text-black text-xs w-full sm:w-auto"
+                    className="self-start px-3 py-1 rounded bg-white text-black text-xs"
                     onClick={async () => {
                       if (!pantryId || !bucket) return alert("Connect Pantry first.")
                       const correct = q.options.find((o) => o.is_correct)
@@ -627,9 +627,9 @@ export function QuizzesTab() {
                 <div className="space-y-2">
                   <div className="font-medium text-sm">Answer Options (mark one correct)</div>
                   {q.options.map((o, optIdx) => (
-                    <div key={o.id} className="flex flex-col sm:flex-row items-start sm:items-center gap-2">
+                    <div key={o.id} className="flex items-center gap-2">
                       <input
-                        className="w-full sm:flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
+                        className="flex-1 bg-white/10 border border-white/20 rounded px-3 py-2 text-white"
                         value={o.option_text}
                         onChange={(e) => updateOption(q.id, o.id, option => ({ ...option, option_text: e.target.value }))}
                         placeholder={`Option ${optIdx + 1}`}
@@ -637,8 +637,7 @@ export function QuizzesTab() {
                         autoCorrect="off"
                         autoCapitalize="off"
                       />
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <label className="text-sm flex items-center gap-1 whitespace-nowrap">
+                      <label className="text-sm flex items-center gap-1 whitespace-nowrap">
                         <input
                           type="radio"
                           name={`correct-${q.id}`}
@@ -649,24 +648,23 @@ export function QuizzesTab() {
                           }))}
                         />
                         Correct
-                        </label>
-                        {q.options.length > 2 && (
-                          <button
-                            className="text-xs opacity-80 hover:opacity-100 px-2 py-1 rounded bg-red-500/20 text-red-300"
-                            onClick={() => updateQuestion(q.id, question => ({
-                              ...question,
-                              options: question.options.filter(opt => opt.id !== o.id)
-                            }))}
-                          >
-                            Remove
-                          </button>
-                        )}
-                      </div>
+                      </label>
+                      {q.options.length > 2 && (
+                        <button
+                          className="text-xs opacity-80 hover:opacity-100 px-2 py-1 rounded bg-red-500/20 text-red-300"
+                          onClick={() => updateQuestion(q.id, question => ({
+                            ...question,
+                            options: question.options.filter(opt => opt.id !== o.id)
+                          }))}
+                        >
+                          Remove
+                        </button>
+                      )}
                     </div>
                   ))}
                   
                   <button
-                    className="px-3 py-1 rounded bg-white/20 text-white text-sm w-full sm:w-auto"
+                    className="px-3 py-1 rounded bg-white/20 text-white text-sm"
                     onClick={() => updateQuestion(q.id, question => ({
                       ...question,
                       options: [
@@ -683,9 +681,9 @@ export function QuizzesTab() {
           ))}
         </div>
 
-        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 pt-4 border-t border-white/10">
+        <div className="flex items-center gap-3 pt-4 border-t border-white/10">
           <button
-            className="px-4 py-2 rounded bg-white/20 text-white text-sm w-full sm:w-auto"
+            className="px-4 py-2 rounded bg-white/20 text-white text-sm"
             onClick={() => updateDraft(d => ({
               ...d,
               questions: [
@@ -707,11 +705,11 @@ export function QuizzesTab() {
           >
             Add Question
           </button>
-          <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium w-full sm:w-auto" onClick={saveQuiz}>
+          <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" onClick={saveQuiz}>
             {editingId ? "Save Changes" : "Create Quiz"}
           </button>
           <button
-            className="px-4 py-2 rounded bg-white/10 text-white text-sm w-full sm:w-auto"
+            className="px-4 py-2 rounded bg-white/10 text-white text-sm"
             onClick={() => {
               setCreating(false)
               setEditingId(null)
@@ -732,15 +730,15 @@ export function QuizzesTab() {
   console.log('QuizzesTab render:', { env, creating, quizzes, isLoading, error })
 
   return (
-    <div className="p-3 md:p-4 text-white space-y-4 w-full">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+    <div className="p-4 text-white space-y-4">
+      <div className="flex items-center justify-between">
         <h2 className="text-xl font-semibold">Quizzes</h2>
         {!creating && (
-          <div className="flex flex-col sm:flex-row gap-2 w-full sm:w-auto">
-            <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium w-full sm:w-auto" onClick={() => setCreating(true)}>
+          <div className="flex gap-2">
+            <button className="px-4 py-2 rounded bg-cyan-500 text-black text-sm font-medium" onClick={() => setCreating(true)}>
               Create Manually
             </button>
-            <button className="px-4 py-2 rounded bg-purple-500 text-white text-sm font-medium w-full sm:w-auto" onClick={() => setCreatingWithAI(true)}>
+            <button className="px-4 py-2 rounded bg-purple-500 text-white text-sm font-medium" onClick={() => setCreatingWithAI(true)}>
               Create with AI
             </button>
           </div>

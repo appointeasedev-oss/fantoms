@@ -19,8 +19,6 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
   const [bgColor, setBgColor] = useState<string>(DEFAULT_BG)
   const [pantryId, setPantryId] = useState<string | null>(null)
   const [bucket, setBucket] = useState<string | null>(null)
-  const [textColor, setTextColor] = useState<string>("#ffffff")
-  const [backgroundImageUrl, setBackgroundImageUrl] = useState<string>("")
 
   // Get pantry credentials from localStorage or context
   useEffect(() => {
@@ -48,8 +46,6 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
         // Use default theme if no pantry credentials
         setThemeColors(DEFAULT_COLORS)
         setBgColor(DEFAULT_BG)
-        setTextColor("#ffffff")
-        setBackgroundImageUrl("")
         return
       }
 
@@ -63,28 +59,20 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
         if (res.ok) {
           const data = await res.json()
           const colorThemeId = data.data?.colorTheme || "default"
-          const userTextColor = data.data?.textColor || "#ffffff"
-          const userBgImageUrl = data.data?.backgroundImageUrl || ""
           
           // Get theme from predefined themes
           const theme = getThemeById(colorThemeId)
           setThemeColors(theme.colors)
           setBgColor(theme.backgroundColor)
-          setTextColor(userTextColor)
-          setBackgroundImageUrl(userBgImageUrl)
         } else {
           // Fallback to default
           setThemeColors(DEFAULT_COLORS)
           setBgColor(DEFAULT_BG)
-          setTextColor("#ffffff")
-          setBackgroundImageUrl("")
         }
       } catch (err) {
         console.warn("Failed to fetch theme from Pantry, using default:", err)
         setThemeColors(DEFAULT_COLORS)
         setBgColor(DEFAULT_BG)
-        setTextColor("#ffffff")
-        setBackgroundImageUrl("")
       }
     }
 
@@ -92,11 +80,9 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
 
     // Listen for theme changes
     const handleThemeChange = (event: CustomEvent) => {
-      const { colors, backgroundColor, textColor: newTextColor, backgroundImageUrl: newBgImageUrl } = event.detail
+      const { colors, backgroundColor } = event.detail
       setThemeColors(colors)
       setBgColor(backgroundColor)
-      if (newTextColor) setTextColor(newTextColor)
-      if (newBgImageUrl !== undefined) setBackgroundImageUrl(newBgImageUrl)
     }
 
     window.addEventListener("themeChange", handleThemeChange as EventListener)
@@ -110,30 +96,8 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
     }
   }, [pantryId, bucket])
 
-  // Apply text color and background image to document
-  useEffect(() => {
-    const root = document.documentElement
-    root.style.setProperty("--app-text-color", textColor)
-    
-    if (backgroundImageUrl.trim()) {
-      root.style.setProperty("--app-bg-image", `url(${backgroundImageUrl})`)
-    } else {
-      root.style.removeProperty("--app-bg-image")
-    }
-  }, [textColor, backgroundImageUrl])
-
   return (
-    <div 
-      ref={containerRef} 
-      className="min-h-screen bg-black relative overflow-hidden"
-      style={{
-        backgroundImage: backgroundImageUrl ? `url(${backgroundImageUrl})` : undefined,
-        backgroundSize: 'cover',
-        backgroundPosition: 'center',
-        backgroundRepeat: 'no-repeat',
-        color: textColor
-      }}
-    >
+    <div ref={containerRef} className="min-h-screen bg-black relative overflow-hidden">
       {/* SVG Filters */}
       <svg className="absolute inset-0 w-0 h-0">
         <defs>
@@ -163,27 +127,19 @@ export function ShaderBackground({ children }: ShaderBackgroundProps) {
       </svg>
 
       {/* Background Shaders */}
-      {!backgroundImageUrl && (
-        <>
-          <MeshGradient
-            className="absolute inset-0 w-full h-full"
-            colors={themeColors}
-            speed={0.3}
-            backgroundColor={bgColor}
-          />
-          <MeshGradient
-            className="absolute inset-0 w-full h-full opacity-60"
-            colors={[bgColor, "#ffffff", themeColors[1] || "#8b5cf6", bgColor]}
-            speed={0.2}
-            wireframe
-            backgroundColor="transparent"
-          />
-        </>
-      )}
-      
-      {backgroundImageUrl && (
-        <div className="absolute inset-0 bg-black/30" />
-      )}
+      <MeshGradient
+        className="absolute inset-0 w-full h-full"
+        colors={themeColors}
+        speed={0.3}
+        backgroundColor={bgColor}
+      />
+      <MeshGradient
+        className="absolute inset-0 w-full h-full opacity-60"
+        colors={[bgColor, "#ffffff", themeColors[1] || "#8b5cf6", bgColor]}
+        speed={0.2}
+        wireframe
+        backgroundColor="transparent"
+      />
 
       {children}
     </div>
