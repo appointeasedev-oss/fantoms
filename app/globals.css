@@ -134,6 +134,18 @@
     /* Set Figtree as the default font family for the entire website */
     font-family: var(--font-figtree);
   }
+  
+  /* Mobile responsive improvements */
+  @media (max-width: 640px) {
+    .container {
+      @apply px-4;
+    }
+    
+    /* Full width transparent boxes on mobile */
+    .bg-white\/5, .bg-white\/10 {
+      @apply w-full;
+    }
+  }
 }
 
 .instrument {
